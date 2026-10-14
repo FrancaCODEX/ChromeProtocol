@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c1216">
+  <meta name="description" content="Construa sua vida nas ruas de Nova Aurora. Um RPG cyberpunk de escolhas, contratos e consequências.">
+  <title>ChromeProtocol — seu futuro tem um preço</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="ChromeProtocol, início"><span class="brand-mark">CP<span>///</span></span><span>CHROME<span class="muted">PROTOCOL</span><small>ROLEPLAY / NOVA AURORA</small></span></a>
+    <div class="header-right"><span class="connection"><i></i><span id="save-status">Conectando…</span></span><button class="icon-button" id="help-button" aria-label="Como jogar">?</button></div>
+  </header>
+  <main>
+    <section id="loading" class="loading"><span class="eyebrow">ESTABELECENDO CONEXÃO</span><h1>Sintonizando Nova Aurora…</h1><p id="loading-message">Carregando seu canal seguro.</p><button id="retry-button" class="button hidden">Tentar novamente</button></section>
+    <section id="landing" class="hidden">
+      <div class="landing-grid">
+        <div class="landing-copy"><span class="eyebrow"><i class="live-dot"></i> NOVA AURORA / 2089</span>
+          <h1>Seu futuro<br>tem um <em>preço.</em></h1>
+          <p class="lead">A cidade vende sonhos. Você decide o que está disposto a pagar.</p>
+          <p class="landing-description">Comece como ninguém. Aceite contratos, modifique seu corpo e escolha em quem confiar. Nas ruas de Nova Aurora, toda escolha deixa uma marca.</p>
+          <button class="button primary large" id="start-button">Criar minha história <span>↗</span></button>
+          <div class="landing-details"><span>01 jogador</span><span>10 contratos</span><span>03 destinos</span></div>
+        </div>
+        <div class="city-art"><img src="/city.svg" alt="O horizonte de Nova Aurora, com torres corporativas, antenas e um sol âmbar"><div class="art-caption"><span>SETOR 07 — BAIXADA NEON</span><span>23:48 / CHUVA ÁCIDA</span></div><div class="art-overlay"><span class="eyebrow">TRANSMISSÃO INTERCEPTADA</span><p>“Você quer sobreviver<br>ou ser lembrado?”</p><span>— MARA, INTERMEDIÁRIA</span></div></div>
+      </div>
+      <div class="intro-strip"><article><span>01 / ESCOLHA</span><h3>Uma vida sua.</h3><p>Três origens. Cinco atributos. Nenhum caminho sem consequências.</p></article><article><span>02 / EVOLUA</span><h3>Mais que carne.</h3><p>Implantes abrem rotas que dinheiro e coragem não conseguem comprar.</p></article><article><span>03 / DEIXE SUA MARCA</span><h3>A cidade lembra.</h3><p>Contatos, facções e decisões antigas voltam quando você menos espera.</p></article></div>
+    </section>
+    <section id="creation" class="hidden creation-panel">
+      <button id="creation-back" class="text-button">← Voltar</button><span class="eyebrow">NOVO REGISTRO / IDENTIDADE</span><h1>Antes da lenda,<br><em>existe você.</em></h1><p class="muted" id="creation-notice">Sua origem é o começo. O resto está nas suas mãos.</p>
+      <form id="character-form">
+        <label class="field-label" for="character-name">COMO AS RUAS VÃO TE CHAMAR?</label><input id="character-name" name="name" placeholder="Seu nome ou codinome" maxlength="24" required autocomplete="off">
+        <fieldset><legend>01 / DE ONDE VOCÊ VEIO?</legend><div class="selection-grid">
+          <label class="selection"><input type="radio" name="origin" value="street" checked><span class="selection-icon">⌁</span><strong>Cria das ruas</strong><small>Aprendeu a sobreviver entre becos e promessas.</small><span class="selection-bonus">₡ 500 · Sangue-frio +1 · Distrito +5</span></label>
+          <label class="selection"><input type="radio" name="origin" value="corpo"><span class="selection-icon">▥</span><strong>Ex-corporativo</strong><small>Conhece as regras de quem controla o jogo.</small><span class="selection-bonus">₡ 800 · Inteligência +1 · Helix +5</span></label>
+          <label class="selection"><input type="radio" name="origin" value="nomad"><span class="selection-icon">↟</span><strong>Nômade</strong><small>A estrada ensinou a consertar e recomeçar.</small><span class="selection-bonus">₡ 450 · Técnica +1 · Fantasmas +5</span></label>
+        </div></fieldset>
+        <fieldset><legend>02 / COMO VOCÊ OPERA?</legend><div class="selection-grid">
+          <label class="selection compact"><input type="radio" name="specialty" value="netrunner" checked><strong>Netrunner</strong><small>Redes, segredos e invasões.</small><span class="selection-bonus">Inteligência +2</span></label>
+          <label class="selection compact"><input type="radio" name="specialty" value="solo"><strong>Combatente</strong><small>Presença, força e confronto.</small><span class="selection-bonus">Corpo +2</span></label>
+          <label class="selection compact"><input type="radio" name="specialty" value="ghost"><strong>Infiltrador</strong><small>Discrição, blefe e precisão.</small><span class="selection-bonus">Sangue-frio +2</span></label>
+        </div></fieldset>
+        <div class="form-footer"><p>O progresso será salvo automaticamente neste navegador e servidor.</p><button class="button primary" type="submit">Entrar em Nova Aurora ↗</button></div>
+      </form>
+    </section>
+    <section id="dashboard" class="hidden">
+      <div class="dashboard-heading"><div><span class="eyebrow" id="day-label">DIA 01 / NOVA AURORA</span><h1 id="welcome">Seu próximo movimento.</h1></div><div class="chapter-badge" id="chapter-label"></div></div>
+      <div class="game-grid">
+        <aside class="sidebar">
+          <section class="panel profile-panel"><div class="profile-top"><div class="avatar" aria-hidden="true">◈</div><div><h2 id="profile-name"></h2><p id="profile-origin"></p><span id="profile-level" class="level-tag"></span></div></div><div class="xp-row"><span id="xp-label"></span><span id="points-label"></span></div><progress id="xp-bar" max="100" value="0" aria-label="Experiência até o próximo nível"></progress><div class="vitals"><div><span>VIDA</span><strong id="health-value"></strong><progress id="health-bar" max="100" aria-label="Vida"></progress></div><div><span>ENERGIA</span><strong id="energy-value"></strong><progress id="energy-bar" max="100" aria-label="Energia"></progress></div></div><div class="money-line"><span>SALDO DISPONÍVEL</span><strong id="money-value"></strong></div><div class="profile-bottom"><span id="reputation-value"></span><span id="heat-value"></span></div></section>
+          <section class="panel attribute-panel"><div class="section-label">ATRIBUTOS <span>BASE + IMPLANTES</span></div><div id="attributes-list"></div><p class="micro-copy">Treine no distrito. Distribua pontos no dossiê.</p></section>
+          <section class="panel"><div class="section-label">RELAÇÕES NA CIDADE</div><div id="factions-list"></div></section>
+          <div class="sidebar-note"><span class="live-dot"></span> A cidade lembra das suas escolhas.</div>
+        </aside>
+        <div class="content-column">
+          <nav class="tabs" aria-label="Áreas do jogo"><button class="tab active" data-tab="mission">Contrato <span>↗</span></button><button class="tab" data-tab="district">Distrito</button><button class="tab" data-tab="clinic">Clínica</button><button class="tab" data-tab="dossier">Dossiê</button></nav>
+          <div id="mission-tab" class="tab-content">
+            <section id="outcome-panel" class="panel outcome-panel hidden"><span class="eyebrow">ÚLTIMO CONTRATO / RESULTADO</span><h3 id="outcome-title"></h3><p id="outcome-text"></p></section>
+            <section id="mission-panel" class="panel mission-panel"><div class="mission-banner"><img src="/city.svg" alt=""><div><span class="eyebrow" id="mission-location"></span><span class="mission-tag" id="mission-tag"></span></div></div><div class="mission-body"><div class="contact-label" id="mission-contact"></div><h2 id="mission-title"></h2><p id="mission-description"></p><div id="mission-memory" class="memory-note hidden"></div><div class="choice-heading"><span>SEU PRÓXIMO MOVIMENTO</span><span>ESCOLHAS PERMANENTES</span></div><div id="choices-list"></div></div></section>
+            <section id="ending-panel" class="panel ending-panel hidden"><span class="eyebrow">FIM DA CARREIRA / SEU LEGADO</span><h2 id="ending-title"></h2><p id="ending-text"></p><div id="ending-stats" class="ending-stats"></div><button class="button primary new-career-button">Escrever outra história ↗</button><p class="micro-copy">Uma nova carreira substitui este salvamento. Consulte seu dossiê antes de recomeçar.</p></section>
+          </div>
+          <div id="district-tab" class="tab-content hidden"><div class="panel section-intro"><span class="eyebrow">BAIXADA NEON / ENTRE CONTRATOS</span><h2>A vida fora do trabalho.</h2><p>Recupere o corpo, pague as contas e prepare seu próximo movimento. Cada atividade abaixo avança um dia. Aluguel: ₡ 120 a cada sete dias.</p></div><div class="activity-grid"><article class="panel activity"><span class="activity-symbol">☾</span><h3>Descansar</h3><p>Até +45 de energia, +25 de vida e −8 de procurado.</p><span class="cost">GRÁTIS · 1 DIA</span><button class="button" data-action="rest">Fechar os olhos</button></article><article class="panel activity"><span class="activity-symbol">⌘</span><h3>Trabalho informal</h3><p>Pequenos reparos e entregas. +180 créditos, +15 XP e −3 de procurado.</p><span class="cost">15 ENERGIA · 1 DIA</span><button class="button" data-action="work">Aceitar serviço</button></article></div><section class="panel training-panel"><span class="eyebrow">OFICINA DE HABILIDADES</span><h3>Treinar um atributo</h3><p>+1 no atributo base. Limite de 10. Custa ₡ 150, 20 de energia e um dia.</p><div id="training-list" class="training-list"></div></section><section id="debt-panel" class="panel debt-panel"><h3>Contas e dívidas</h3><p id="debt-text"></p><button class="button" data-action="debt" id="debt-button">Quitar dívida</button></section></div>
+          <div id="clinic-tab" class="tab-content hidden"><div class="panel section-intro"><span class="eyebrow">MERCADO FERRUGEM / DRA. KIRA</span><h2>Seu corpo. Sua próxima versão.</h2><p>Implantes aumentam atributos e liberam escolhas exclusivas. Você tem três slots permanentes: escolha sua combinação.</p><span id="slots-label" class="level-tag"></span></div><div id="shop-list" class="shop-grid"></div></div>
+          <div id="dossier-tab" class="tab-content hidden"><div class="panel section-intro"><span class="eyebrow">REGISTRO PESSOAL / CANAL PRIVADO</span><h2>As marcas que você deixou.</h2><p>Suas decisões, seus contratos e quem você se tornou.</p><div id="skill-list" class="training-list"></div><div class="dossier-actions"><button class="button" id="export-button">Baixar dossiê</button><button class="text-button new-career-button">Nova carreira</button></div></div><section class="panel journal-panel"><div class="section-label">LINHA DO TEMPO <span>EVENTOS RECENTES PRIMEIRO</span></div><div id="journal-list"></div></section></div>
+          <section class="transmission"><span class="transmission-icon">⌁</span><div><span>FREQUÊNCIA DA CIDADE</span><p id="transmission-text">O primeiro contrato é uma porta. Você decide o que atravessa com ela.</p></div><span class="transmission-number">FM 108.9</span></section>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer><span>CHROMEPROTOCOL <b>v0.1.0</b></span><span>UMA CIDADE ORIGINAL. UMA HISTÓRIA SUA.</span></footer>
+  <dialog id="choice-dialog"><form method="dialog"><button class="dialog-close" aria-label="Fechar">×</button></form><span class="eyebrow">CONFIRMAR DECISÃO</span><h2 id="confirm-title"></h2><p id="confirm-description"></p><div id="confirm-details" class="confirm-details"></div><p class="micro-copy">O resultado é salvo imediatamente. Esta escolha avança um dia e encerra o contrato atual.</p><button id="confirm-choice" class="button primary">Confirmar escolha ↗</button></dialog>
+  <dialog id="help-dialog"><form method="dialog"><button class="dialog-close" aria-label="Fechar">×</button></form><span class="eyebrow">GUIA DE SOBREVIVÊNCIA</span><h2>Como jogar</h2><p>Leia o contrato e escolha uma abordagem. O percentual mostra a chance de sucesso; atributos, implantes, decisões anteriores e nível de procurado alteram essa chance.</p><p>Falhar também avança a história. Sem energia? Descanse no distrito. Sem dinheiro? Faça um trabalho informal. Aluguel de 120 créditos é cobrado a cada sete dias; valores não pagos viram dívida.</p><p>Se a vida chegar a zero, Kira resgata você por 200 créditos. A campanha continua. A cada 100 XP, você sobe de nível e ganha um ponto de atributo.</p><p>Implantes são permanentes e têm três slots. Antes de comprar, veja quais rotas eles abrem.</p><p>O servidor salva cada ação. Sua carreira fica vinculada a este navegador por um cookie: mantenha o cookie e o banco de dados para retomá-la. Não há conta, multiplayer ou importação de dossiê nesta versão.</p><p class="micro-copy">Universo original inspirado no gênero cyberpunk. Sem afiliação com Cyberpunk 2077.</p></dialog>
+  <div id="toast" role="status" aria-live="polite" class="toast hidden"></div>
+  <noscript>Ative o JavaScript para jogar ChromeProtocol.</noscript>
+</body>
+</html>

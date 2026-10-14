@@ -1,0 +1,52 @@
+name: Verify ChromeProtocol
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Domain, API and package
+        run: ./mvnw -B verify
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser tooling
+        run: |
+          npm install --ignore-scripts --no-package-lock
+          npx playwright install --with-deps chromium
+      - name: Start game and verify browser
+        run: |
+          java -jar target/chromeprotocol-0.1.0.jar > target/server.log 2>&1 &
+          ready=false
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://localhost:8080/api/game > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then cat target/server.log; exit 1; fi
+          npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-evidence
+          path: |
+            target/surefire-reports/
+            target/browser/
+            target/server.log
+          retention-days: 7
