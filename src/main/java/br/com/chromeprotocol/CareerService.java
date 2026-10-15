@@ -19,8 +19,8 @@ public class CareerService {
         return id == null ? null : repository.findById(id).map(c -> engine.view(decode(c.state))).orElse(null);
     }
     @Transactional
-    public Created create(String name, String origin, String specialty) {
-        GameState state = engine.create(name, origin, specialty);
+    public Created create(String name, String origin, String specialty, Appearance appearance) {
+        GameState state = engine.create(name, origin, specialty, appearance);
         UUID id = UUID.randomUUID(); repository.save(new Career(id, encode(state)));
         return new Created(id, engine.view(state));
     }
@@ -31,11 +31,17 @@ public class CareerService {
         return engine.view(state);
     }
     @Transactional
-    public GameEngine.View restart(UUID id, int revision, String name, String origin, String specialty) {
+    public GameEngine.View restart(UUID id, int revision, String name, String origin, String specialty, Appearance appearance) {
         Career career = load(id); GameState old = decode(career.state);
         if (old.revision != revision) throw new IllegalArgumentException("Sua carreira mudou. Atualize antes de reiniciar.");
-        GameState state = engine.create(name, origin, specialty); state.revision = old.revision + 1;
+        GameState state = engine.create(name, origin, specialty, appearance); state.revision = old.revision + 1;
         career.state = encode(state); return engine.view(state);
+    }
+    @Transactional
+    public GameEngine.View customize(UUID id, int revision, Appearance appearance) {
+        Career career = load(id); GameState state = decode(career.state);
+        engine.customize(state, appearance, revision); career.state = encode(state);
+        return engine.view(state);
     }
     private Career load(UUID id) {
         if (id == null) throw new IllegalArgumentException("Crie um personagem primeiro.");
