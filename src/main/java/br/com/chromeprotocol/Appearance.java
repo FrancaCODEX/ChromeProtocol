@@ -4,8 +4,9 @@ import java.util.Set;
 
 /** Cosmetic choices only. Tokens are validated before they can be persisted. */
 public record Appearance(String face, String skin, String hair, String hairColor,
-                         String eyes, String outfit, String accent,String beard,String eyeColor,String eyewear,String headwear,String jerseyPattern) {
+                         String eyes, String outfit, String accent,String beard,String eyeColor,String eyewear,String headwear,String jerseyPattern,String portraitStyle) {
     public Appearance {
+        portraitStyle=valid(portraitStyle,"classic",Set.of("classic","studio"));
         face = valid(face, "angular", Set.of("angular", "soft", "broad"));
         skin = valid(skin, "warm", Set.of("porcelain", "sand", "warm", "copper", "umber", "ebony"));
         hair = valid(hair, "undercut", Set.of("undercut", "mohawk", "bob", "braids", "shaved","curly","long","ponytail","afro"));
@@ -19,7 +20,8 @@ public record Appearance(String face, String skin, String hair, String hairColor
         headwear=valid(headwear,eyes.equals("visor")?"headset":"none",Set.of("none","headset","cap"));
         jerseyPattern=valid(jerseyPattern,"diagonal",Set.of("diagonal","minimal","stripes"));
     }
-    public Appearance(String face,String skin,String hair,String hairColor,String eyes,String outfit,String accent){this(face,skin,hair,hairColor,eyes,outfit,accent,null,null,null,null,null);}
+    public Appearance(String face,String skin,String hair,String hairColor,String eyes,String outfit,String accent){this(face,skin,hair,hairColor,eyes,outfit,accent,null,null,null,null,null,null);}
+    public Appearance(String face,String skin,String hair,String hairColor,String eyes,String outfit,String accent,String beard,String eyeColor,String eyewear,String headwear,String jerseyPattern){this(face,skin,hair,hairColor,eyes,outfit,accent,beard,eyeColor,eyewear,headwear,jerseyPattern,null);}
     public static Appearance defaults() {
         return new Appearance(null, null, null, null, null, null, null);
     }

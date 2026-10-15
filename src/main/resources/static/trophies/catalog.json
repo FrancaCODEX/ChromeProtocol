@@ -1,0 +1,47 @@
+[
+  {
+    "id": "champions",
+    "name": "VALORANT Champions",
+    "image": "/trophies/champions.png"
+  },
+  {
+    "id": "masters",
+    "name": "VALORANT Masters",
+    "image": "/trophies/masters.png"
+  },
+  {
+    "id": "americas",
+    "name": "VCT Americas",
+    "image": "/trophies/americas.png"
+  },
+  {
+    "id": "emea",
+    "name": "VCT EMEA",
+    "image": "/trophies/emea.png"
+  },
+  {
+    "id": "pacific",
+    "name": "VCT Pacific",
+    "image": "/trophies/pacific.png"
+  },
+  {
+    "id": "china",
+    "name": "VCT China",
+    "image": "/trophies/china.png"
+  },
+  {
+    "id": "brazil",
+    "name": "Challengers Brazil",
+    "image": "/trophies/brazil.png"
+  },
+  {
+    "id": "korea",
+    "name": "Challengers Korea",
+    "image": "/trophies/korea.png"
+  },
+  {
+    "id": "spain",
+    "name": "Challengers Spain",
+    "image": "/trophies/spain.png"
+  }
+]

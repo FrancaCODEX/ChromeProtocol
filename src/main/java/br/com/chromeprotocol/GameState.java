@@ -25,7 +25,7 @@ public class GameState {
     public List<SeriesResult> series = new ArrayList<>();
     public static class Campaign {
         public String part;
-        public int played, wins, losses, groupWins, groupLosses, upperWins, bracketLosses, lowerRemaining, seed;
+        public int seriesOffset, played, wins, losses, groupWins, groupLosses, upperWins, bracketLosses, lowerRemaining, seed;
         public boolean done, champion, qualified;
     }
     public static class Series {
@@ -49,6 +49,7 @@ public class GameState {
     public String ending;
     public Map<String,Integer> attributes = new LinkedHashMap<>();
     public Contract contract;
+    public Contract expiredContract;
     public Match match;
     public Outcome outcome;
     public List<Season> seasons = new ArrayList<>();

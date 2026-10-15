@@ -140,4 +140,25 @@ class GameApiTest {
         mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.seasons.length()").value(1)).andExpect(jsonPath("$.game.character.appearance.eyewear").value("round"));
     }
 
+    @Test void renewalAndStarterPromotionPersistWithoutReplayingTheWindow() throws Exception {
+        Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);
+        state.year=2027;state.age=16;state.phase=2;state.attributes.replaceAll((k,v)->80);
+        state.expiredContract=new GameState.Contract("furia","FURIA",3,500,2026,"Reserva",12);
+        row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.offers[0].id").value("renew")).andExpect(jsonPath("$.game.offers[0].position").value("Titular"));
+        action(cookie,"choice","renew",0);
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.contract.orgId").value("furia")).andExpect(jsonPath("$.game.character.contract.endYear").value(2027)).andExpect(jsonPath("$.game.character.contract.position").value("Titular")).andExpect(jsonPath("$.game.character.expiredContract").doesNotExist());
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action("choice","renew",0)))).andExpect(status().isBadRequest());
+        var saved=mapper.readValue(repository.findById(row.id).orElseThrow().state,GameState.class);assertEquals("Titular",saved.contract.position());assertNull(saved.expiredContract);
+    }
+    @Test void studioAppearanceAndOldReserveSaveRemainCompatible() throws Exception {
+        Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);
+        state.attributes.replaceAll((k,v)->80);state.contract=new GameState.Contract("furia","FURIA",3,500,2028,"Reserva",12);row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.contract.position").value("Titular")).andExpect(jsonPath("$.game.character.appearance.portraitStyle").value("classic"));
+        mvc.perform(post("/api/game/appearance").cookie(cookie).with(csrf()).contentType("application/json").content("{\"revision\":0,\"appearance\":{\"portraitStyle\":\"studio\",\"hair\":\"long\"}}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.character.appearance.portraitStyle").value("studio"));
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.appearance.portraitStyle").value("studio")).andExpect(jsonPath("$.game.character.appearance.hair").value("long"));
+        for(String id:java.util.List.of("champions","masters","americas","emea","pacific","china","brazil","korea","spain"))mvc.perform(get("/trophies/"+id+".png")).andExpect(status().isOk());
+        mvc.perform(get("/vendor/avatar-studio.js")).andExpect(status().isOk());
+    }
 }

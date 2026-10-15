@@ -90,6 +90,7 @@ public class CareerService {
             if(mapper.readTree(state).path("rulesVersion").asInt(1)<3){game.rulesVersion=3;game.legacyMap=game.match!=null;}
             if(game.favoriteAgents == null || game.favoriteAgents.isEmpty()) game.favoriteAgents = new java.util.ArrayList<>(java.util.List.of(game.agent));
             if(game.developmentMode == null) game.developmentMode = "standard";
+            Catalog.ensureStarter(game);
             return game;
         }
         catch (JsonProcessingException e) { throw new IllegalStateException("Falha ao ler carreira", e); }
