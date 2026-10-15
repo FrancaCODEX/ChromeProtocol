@@ -12,7 +12,7 @@ import java.util.*;
 public class GameController {
     private final CareerService service;
     public GameController(CareerService service) { this.service = service; }
-    public record NewCareer(String name, String nationality, String role, String background, String agent, Integer revision, Appearance appearance, String developmentMode, Boolean igl, java.util.List<String> favoriteAgents) {}
+    public record NewCareer(String name, String nationality, String role, String background, String agent, Integer revision, Appearance appearance, String developmentMode, Boolean igl, java.util.List<String> favoriteAgents,String pace) {}
     @GetMapping("/session")
     public Map<String, String> csrf(CsrfToken token) { return Map.of("token", token.getToken(), "header", token.getHeaderName()); }
     @GetMapping("/game")
@@ -28,7 +28,7 @@ public class GameController {
     public ResponseEntity<GameEngine.View> create(@RequestBody NewCareer body,
              @CookieValue(name = "CP_CAREER", required = false) String cookie, HttpServletRequest request) {
         if (service.read(id(cookie)) != null) throw new IllegalArgumentException("Uma carreira já existe. Use a opção de nova carreira.");
-        CareerService.Created created = service.create(body.name(), body.nationality(), body.role(), body.background(), body.agent(), body.appearance(), body.developmentMode(), Boolean.TRUE.equals(body.igl()), body.favoriteAgents(), id(cookie));
+        CareerService.Created created = service.create(body.name(), body.nationality(), body.role(), body.background(), body.agent(), body.appearance(), body.developmentMode(), Boolean.TRUE.equals(body.igl()), body.favoriteAgents(), body.pace(), id(cookie));
         ResponseCookie careerCookie = ResponseCookie.from("CP_CAREER", created.id().toString()).httpOnly(true)
             .secure(request.isSecure()).sameSite("Strict").path("/").maxAge(Duration.ofDays(365)).build();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, careerCookie.toString()).body(created.game());
@@ -40,7 +40,7 @@ public class GameController {
     @PostMapping("/game/restart")
     public GameEngine.View restart(@CookieValue(name = "CP_CAREER", required = false) String cookie, @RequestBody NewCareer body) {
         if (body.revision() == null) throw new IllegalArgumentException("Atualize a carreira antes de reiniciar.");
-        return service.restart(id(cookie), body.revision(), body.name(), body.nationality(), body.role(), body.background(), body.agent(), body.appearance(), body.developmentMode(), Boolean.TRUE.equals(body.igl()), body.favoriteAgents());
+        return service.restart(id(cookie), body.revision(), body.name(), body.nationality(), body.role(), body.background(), body.agent(), body.appearance(), body.developmentMode(), Boolean.TRUE.equals(body.igl()), body.favoriteAgents(), body.pace());
     }
     public record AppearanceChange(Appearance appearance, Integer revision) {}
     @PostMapping("/game/appearance")

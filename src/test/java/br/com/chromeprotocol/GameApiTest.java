@@ -111,4 +111,24 @@ class GameApiTest {
         var old=mapper.readValue("{\"year\":2026,\"age\":15,\"organization\":\"Mix\",\"wins\":1,\"losses\":2,\"titles\":0,\"earnings\":500}",GameState.Season.class);assertNull(old.overall(),"Do not invent old OVR");assertEquals(500,old.earnings());
     }
 
+    private JsonNode action(Cookie cookie,String type,String target,int revision) throws Exception {
+        return mapper.readTree(mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action(type,target,revision)))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+    @Test void runBatchesPersistEverySeriesAndMapWithoutRerollOrDuplicate() throws Exception {
+        Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);state.phase=3;state.pace="run";row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+        var result=action(cookie,"choice","series-run",0);assertEquals(4,result.path("character").path("series").size());assertTrue(result.path("character").path("tourEvent").asBoolean());assertEquals(4,result.path("character").path("outcome").path("seriesResults").size());int maps=result.path("character").path("maps").size();assertTrue(maps>=8&&maps<=12);
+        var read=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("game");assertEquals(result.path("character"),read.path("character"));
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action("choice","series-run",0)))).andExpect(status().isBadRequest());
+        action(cookie,"continue","",1);var unchanged=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andReturn().getResponse().getContentAsString()).path("game");assertEquals(maps,unchanged.path("character").path("maps").size());String decision=unchanged.path("scene").path("choices").get(0).path("id").asText();action(cookie,"choice",decision,2);var saved=mapper.readValue(repository.findById(UUID.fromString(cookie.getValue())).orElseThrow().state,GameState.class);assertFalse(saved.tourEvent);assertEquals(4,saved.series.size());assertEquals(3,saved.phase);
+    }
+    @Test void runCanBeSelectedAtCreationAndPaceDoesNotChangeAbilities() throws Exception {
+        String body=NEW.substring(0,NEW.length()-1)+",\"pace\":\"run\"}";var response=mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.character.pace").value("run")).andExpect(jsonPath("$.scene.choices[0].id").value("run-prepare")).andReturn().getResponse();var cookie=response.getCookie("CP_CAREER");var attrs=mapper.readTree(response.getContentAsString()).path("character").path("attributes");var switched=action(cookie,"pace","detailed",0);assertEquals(attrs,switched.path("character").path("attributes"));assertEquals(0,switched.path("character").path("phase").asInt());
+        mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(body.replace("run","cheat"))).andExpect(status().isBadRequest());
+        for(String icon:java.util.List.of("champions","masters","regional"))mvc.perform(get("/trophies/"+icon+".svg")).andExpect(status().isOk());
+    }
+    @Test void unfinishedLegacyMapIsNotInventedAsAFullSeries() throws Exception {
+        Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);state.rulesVersion=2;state.phase=3;state.wins=7;state.match=new GameState.Match();state.match.opponent="Mix antigo";state.match.map="Haven";state.match.competition="Premier antigo";state.match.stage=2;state.match.roundsWon=2;state.match.score=9;state.match.opponentScore=7;row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+        var initial=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andExpect(jsonPath("$.game.activeMatch.stage").value(2)).andReturn().getResponse().getContentAsString()).path("game");assertEquals(0,initial.path("character").path("series").size());String choice=initial.path("scene").path("choices").get(0).path("id").asText();var completed=action(cookie,"choice",choice,0).path("character");assertEquals(8,completed.path("wins").asInt());assertEquals(0,completed.path("series").size());assertTrue(completed.path("maps").get(0).path("seriesId").isNull());assertEquals(4,completed.path("phase").asInt());
+    }
+
 }

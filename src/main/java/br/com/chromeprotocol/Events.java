@@ -100,7 +100,7 @@ public final class Events {
             o("create","Produzir uma série sobre sua temporada","Transformar aprendizado em conteúdo.","communication",3,Catalog.bonus("communication",2),700,650,0,-12,6),
             o("offline","Passar alguns dias offline","Voltar com a cabeça mais leve.","",0,Catalog.bonus("composure",3),0,20,4,30,-20))
     );
-    public static Round round(GameState s,int stage){return ROUNDS.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,stage),ROUNDS.size()));}
-    public static Life life(GameState s){return LIFE.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,s.eventVariant),LIFE.size()));}
+    public static Round round(GameState s,int stage){return ROUNDS.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,stage,s.currentSeries==null?"legacy":s.currentSeries.id,s.match==null?0:s.match.mapNumber),ROUNDS.size()));}
+    public static Life life(GameState s){int start=Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,s.eventVariant),LIFE.size());for(int i=0;i<LIFE.size();i++){int index=(start+i)%LIFE.size();if(!s.seenLifeEvents.contains(index))return LIFE.get(index);}return LIFE.get(start);}
     public static Play play(String id){return PLAYS.stream().filter(p->p.id().equals(id)).findFirst().orElseThrow();}
 }

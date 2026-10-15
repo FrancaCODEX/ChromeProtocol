@@ -2,7 +2,7 @@
 
 **O próximo round é seu.** Modo carreira web de e-sports, começando por Valorant. Você cria um jogador de 15 anos e toma decisões dentro e fora do servidor até os 35 anos: nacionalidade, função, peneiras, contratos, partidas e legado.
 
-Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.2.0**.
+Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.3.0**.
 
 ## O que dá para jogar
 
@@ -11,7 +11,8 @@ Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O 
 - Personagem com rosto, pele, cabelo, roupa e acessórios de jogador; prévia em tempo real.
 - Três trajetórias iniciais: revelação da ranked, equipe da escola e criador de conteúdo.
 - Treze fases por ano: preparação, peneiras, mercado, Kickoff, Masters, Stage 1, eventos, Stage 2, playoffs, Champions, prêmios e balanço.
-- Mapas representativos das competições elegíveis, cada um com três rounds-chave escolhidos pelo jogador.
+- Séries MD3/MD5 completas, simulação de rodadas comuns e intervenção em três rounds-chave no mapa que pode decidir a série.
+- Ritmos detalhado e Run, com a mesma progressão: blocos de até quatro séries, dilemas entre os jogos e escolhas de contrato/cartas sempre manuais.
 - Resultado imediato persistente após cada decisão, com narrativa, placar e valores antes/depois. O próximo evento só é liberado ao continuar.
 - Mercado com propostas distintas de salário, duração e vaga de titular/reserva.
 - 48 organizações reais do VCT, com logos locais da fonte oficial, mais equipes brasileiras de desenvolvimento.
@@ -58,9 +59,9 @@ O volume `chromeprotocol-data` mantém o banco. `docker compose down` preserva o
 | Fase | Período | Decisões |
 |---|---|---|
 | Preparação, peneiras e contratos | Janeiro | Preparar fundamentos e negociar |
-| Kickoff / Challengers Etapa 1 / Premier Split 1 | Janeiro–Fevereiro | Mapa representativo do circuito |
+| Kickoff / Challengers Etapa 1 / Premier Split 1 | Janeiro–Fevereiro | Séries do circuito |
 | Masters Santiago | Março | Elite classificada no Kickoff |
-| Stage 1 / Challengers Etapa 2 / Premier Split 2 | Abril–Maio | Mapa representativo |
+| Stage 1 / Challengers Etapa 2 / Premier Split 2 | Abril–Maio | Cinco rodadas VCT + playoffs / oito séries de base |
 | Masters London | Junho | Elite classificada no Stage 1 |
 | Acontecimento inesperado | Junho–Julho | Vida, equipe, mídia, patrocínio e oportunidades |
 | Stage 2 / Challengers Playoffs / Premier Split 3 | Julho–Agosto | Disputa da vaga nos playoffs |
@@ -69,9 +70,9 @@ O volume `chromeprotocol-data` mantém o banco. `docker compose down` preserva o
 | Prêmios individuais | Novembro | Reconhecimentos calculados pelos números |
 | Balanço e carta permanente | Dezembro | Escolher evolução e depois 1 de 3 cartas |
 
-Cada escolha abre o resultado imediatamente. Recarregar mantém o resultado e não refaz o sorteio. Vencer pelo menos dois dos três rounds-chave vence o mapa. Reservas disputam scrims com números separados, sem vitórias oficiais, classificação ou troféus. Equipes Academy não acessam a rota de Challengers para os playoffs do VCT. Sem vaga, você recebe um evento contextual em vez de disputar o campeonato.
+Cada escolha abre o resultado imediatamente. Recarregar mantém o resultado e não refaz o sorteio. Vencer pelo menos dois dos três rounds-chave vence o mapa. Reservas disputam scrims com números separados, sem vitórias oficiais, classificação ou troféus. Nesta versão, só equipes de elite acessam os playoffs do VCT; promoção/Ascension a partir de Challengers e Academy ainda não é simulada. Sem vaga, você recebe um evento contextual em vez de disputar o campeonato.
 
-A simulação representa cada etapa com um mapa decisivo: não simula grupos, séries MD3/MD5, tabelas, pontos de circuito ou todas as vagas reais. O calendário regional usa Americas, EMEA, Pacific e CN. VCB identifica Gamers Club Challengers Brazil; outras ligas são simplificadas por região.
+A elite tem Kickoff com três vitórias ou três derrotas, grupos regionais de seis equipes com cinco séries, classificação dos quatro primeiros, trajetória em chave superior/inferior e finais MD5. Masters inclui suíço (duas vitórias/derrotas) com entrada direta do campeão regional; Champions inclui grupos e playoffs. Tabelas do grupo do jogador são determinísticas e só mostram resultados das rodadas já concluídas. Chaves adversárias, desempates e vagas são simplificados: não há pontuação de circuito, cross-region seeding ou todos os critérios oficiais. O calendário da base/Premier é próprio do jogo: 26 séries (8 + 8 + 10), com campanha campeã ao ganhar pelo menos 75% da etapa e a última série. Esse número não é um formato oficial do VCB. A elite não tem total anual fixo: a campanha invicta no modelo soma 33 séries; suíço e chaves inferiores acrescentam confrontos, e eliminações reduzem o total. A estimativa de 34–42 não é tratada como regra universal. O calendário regional usa Americas, EMEA, Pacific e CN. VCB identifica Gamers Club Challengers Brazil; outras ligas são simplificadas por região.
 
 Os salários são creditados pelos meses concluídos, junto das despesas: R$ 50/mês antes dos 18 anos e R$ 300/mês depois, limitadas ao saldo. O calendário avança entre fases; os três rounds de um mapa pertencem à mesma fase. Escolhas sem teste são garantidas. As demais mostram a chance exata usada no servidor, calculada pelos atributos, condição do jogador, química e progresso do mapa.
 
@@ -118,7 +119,7 @@ GitHub Actions executa motor/API, empacotamento e Chromium, publicando relatóri
 
 Simulação single-player de decisões. Ainda não há partidas jogáveis em FPS, roster individual de colegas, ligas com tabela completa, transferências negociadas com outros jogadores, multiplayer ou outros e-sports. Mapas representam momentos selecionados; não são uma reprodução round a round de uma partida real.
 
-Próximas expansões possíveis: campeonatos com grupos, colegas e treinadores persistentes, novas modalidades e circuitos com grupos, séries e pontos de classificação.
+Próximas expansões possíveis: colegas e treinadores persistentes, pontos de circuito, promoções do Challengers e chave mundial completa com todos os confrontos entre outras organizações.
 
 Toda alteração entra em [CHANGELOG.md](CHANGELOG.md). Mudanças validadas podem ser integradas à main conforme autorização do proprietário.
 
@@ -150,4 +151,16 @@ O usuário controla somente o jogador. Não há compra de outros atletas, escala
 
 Referências analisadas em 15/10/2026: [ValorantCareer](https://valorantcareer.com/) para hierarquia visual da criação e radar; [Rift Career](https://riftscore.net/valorant/) para progressão, comparação de propostas e histórico anual. O código, textos, avatar e implementação são próprios. O modo de jogador do ValorantSimulator foi indicado como direção pelo usuário, mas não foi inspecionado: o navegador recusou o domínio por uma preferência de permissão salva, mesmo após nova autorização em mensagem. Não copiamos conteúdo nem atribuímos funções não verificadas ao site.
 
-Continua sendo uma simulação simplificada de competições: nomes oficiais e rotas de elegibilidade estão presentes, mas não todos os jogos, séries MD3/MD5, grupos, chaveamentos ou pontuações de cada liga real. Estatísticas são geradas pela simulação e não refletem partidas reais.
+Continua sendo uma simulação própria: séries e grupos do jogador são registrados, mas chaveamentos das demais equipes, pontos oficiais e vagas de cada liga não são reproduzidos integralmente. Estatísticas são geradas pelo jogo e não refletem partidas reais.
+
+## Séries, Run e troféus (1.3)
+
+Antes de uma série, escolha **Assumir o momento decisivo**, **Simular esta série** ou **Avançar até uma decisão**. O avanço detalhado para antes de estreia, rodada final, classificação, eliminação ou título. Em **Run**, o terceiro botão simula até quatro séries, inclusive decisivas, e para no próximo dilema ou ao encerrar o período. Ele não escolhe contratos, cartas ou respostas de eventos. Trocar de ritmo mantém chances, atributos e todo o progresso. No início de cada ano a Run combina treino e teste em uma ação; as propostas continuam sendo escolhidas pelo jogador.
+
+A intervenção simula a abertura da série, pausa quando alguém chega a um mapa da vitória e oferece três rounds-chave. O resultado do mapa influencia em cinco pontos a chance dos mapas restantes. Todos os mapas, inclusive simulados, ficam salvos com identificação da série, modo, kills, mortes, assistências, KD e ACS. Resultados em bloco podem ser expandidos mapa a mapa. Séries e mapas têm contadores separados. Nenhum mapa de um save antigo vira uma série inventada; um mapa antigo em andamento é concluído uma vez no formato original. Os contadores de séries começam com as séries realmente disputadas após a atualização.
+
+A prática a cada quatro séries dá +1 no atributo principal e +1 em disciplina, mesmo perdendo. Até os 23 anos, concluir uma etapa melhora cada atributo em +1. Ganhos respeitam o limite 99 e o bônus de evolução de Talento da geração. Vitórias em mapas pagam 35 × nível; vitórias em séries, 150 × nível, além do salário e premiações de campeonato. Não existe título por vencer apenas um mapa. A simulação usa atributos, condição, adversário, liderança e bônus permanentes: sorte pode mudar uma campanha, mas derrotas não removem a evolução.
+
+Dilemas usam quinze modelos e evitam repetir um modelo já visto no mesmo ano enquanto houver outro disponível. A rotina opcional, investimentos e metas continuam acessíveis entre ocasiões. Troféus de Champions, Masters e regionais usam três ícones SVG próprios, locais, visíveis na sala e ao lado da temporada vencedora. São interpretações gráficas do jogo, sem reproduzir fotografias oficiais. O histórico mostra OVR, séries V/D, resultados por etapa e renda por ano.
+
+Fontes de formato consultadas em 15/10/2026: [Stage 1 EMEA](https://valorantesports.com/en-GB/news/2026-vct-emea-stage-1-format-dates-and-tickets), [Masters Santiago](https://valorantesports.com/en-GB/news/masters-santiago-everything-you-need-to-know), [Champions Shanghai](https://valorantesports.com/pt-BR/news/champions-shanghai-everything-you-need-to-know). São referências de desenho, não sincronização com competições ao vivo.
