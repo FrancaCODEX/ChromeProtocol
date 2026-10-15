@@ -85,7 +85,7 @@ Campanhas cyberpunk não são reinterpretadas como jogadores. A interface identi
 
 Salvamentos anteriores de Clutch Career são migrados preservando jogador, idade, atributos, contrato, histórico, revisão e mapa em andamento. Números de mapas antigos não são inventados; as novas estatísticas começam com os mapas jogados após a atualização.
 
-O botão **Nova carreira** no topo abre uma confirmação com opção de baixar o dossiê. Voltar ou cancelar mantém todo o progresso. Confirmar o novo formulário substitui a carreira de Valorant somente após confirmar o formulário. Editar jogador muda apenas o visual.
+O botão **Nova carreira** no topo abre uma confirmação com opção de baixar o dossiê. Voltar ou cancelar mantém todo o progresso. Confirmar o novo formulário substitui a carreira de Valorant atual. Editar jogador muda apenas o visual.
 
 ## Tecnologia e testes
 

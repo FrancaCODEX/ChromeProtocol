@@ -2,7 +2,7 @@ package br.com.chromeprotocol;
 
 import java.util.*;
 
-/** The calendar, contracts, academy names and financial values are fictional simulation content. */
+/** Official reference names and local logos; contract terms and progression are simulated. */
 public final class Catalog {
     private Catalog() {}
     public record Country(String id,String name,String region) {}
