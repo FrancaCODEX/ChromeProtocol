@@ -59,6 +59,18 @@ public final class EngineChecks {
             rejects(()->choose(engine,career,"prep-aim"),"Ended career cannot advance");
         }
         GameState early=fresh();early.age=23;early.phase=7;step(win,early,"retire");check(early.ended&&early.age==23,"Optional retirement");
+        for(int pattern=0;pattern<8;pattern++){
+            final int mask=pattern;GameEngine scripted=new GameEngine(new Random(1){int i;@Override public int nextInt(int bound){return ((mask>>i++)&1)==1?0:bound-1;}});
+            GameState rounds=fresh();rounds.phase=3;int previous=4,other=4;GameState.Match tracked=null;
+            for(int i=0;i<3;i++){
+                choose(scripted,rounds,"match-support");if(rounds.match!=null)tracked=rounds.match;
+                check(tracked.score>=previous&&tracked.opponentScore>=other,"Score never decreases between key rounds");
+                previous=tracked.score;other=tracked.opponentScore;ack(scripted,rounds);
+            }
+        }
+        GameState bench=fresh();bench.phase=3;bench.contract=new GameState.Contract("aurora","Aurora Academy",1,500,2028,"Reserva",12);
+        for(int i=0;i<3;i++)step(win,bench,"match-support");
+        check(bench.followers==160&&bench.earnings==1500,"Reserve earns salary with lower exposure and no match prize");
         GameState unqualified=fresh();unqualified.phase=6;for(int i=0;i<3;i++)step(win,unqualified,"match-support");check(unqualified.titles==0,"Winning repescagem does not award a title");
         System.out.println("Domain checks: "+assertions+" passed, 0 failures.");
     }

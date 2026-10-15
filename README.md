@@ -62,7 +62,7 @@ O volume `chromeprotocol-data` mantém o banco. `docker compose down` preserva o
 | Decisão da temporada | Novembro | Final se venceu as duas etapas; repescagem caso contrário |
 | Balanço anual | Dezembro | Desenvolvimento, marca, descanso ou aposentadoria |
 
-Cada escolha abre o resultado imediatamente. A janela fica aberta após recarregar a página; confirmar “Continuar carreira” não refaz o sorteio. Nos mapas, vencer pelo menos dois dos três rounds-chave vence o mapa. Reservas disputam scrims de avaliação, sem troféu do circuito. Vencer a repescagem também não concede um título.
+Cada escolha abre o resultado imediatamente. A janela fica aberta após recarregar a página; confirmar “Continuar carreira” não refaz o sorteio. Nos mapas, vencer pelo menos dois dos três rounds-chave vence o mapa. Reservas disputam scrims de avaliação, com menor ganho de reputação/seguidores e sem premiação ou troféu do circuito. Vencer a repescagem também não concede um título.
 
 Os salários são creditados pelos meses concluídos, junto das despesas: R$ 50/mês antes dos 18 anos e R$ 300/mês depois, limitadas ao saldo. O calendário avança entre fases; os três rounds de um mapa pertencem à mesma fase. Escolhas sem teste são garantidas. As demais mostram a chance exata usada no servidor, calculada pelos atributos, condição do jogador, química e progresso do mapa.
 

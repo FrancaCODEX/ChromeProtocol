@@ -97,13 +97,14 @@ public final class GameEngine {
             }
             case "match-aggressive","match-control","match-support" -> {
                 GameState.Match m=matchFor(s);s.match=m;s.energy-=choice.id().equals("match-aggressive")?12:choice.id().equals("match-control")?8:5;
-                if(success){m.roundsWon++;s.form+=4;s.reputation+=choice.id().equals("match-aggressive")?4:2;s.followers+=80;skill(s,choice.attribute(),1);s.stress-=3;}else{s.form-=3;s.stress+=5;}
+                boolean reserve=s.contract!=null&&s.contract.position().equals("Reserva");
+                if(success){m.roundsWon++;s.form+=4;s.reputation+=reserve?1:choice.id().equals("match-aggressive")?4:2;s.followers+=reserve?20:80;skill(s,choice.attribute(),1);s.stress-=3;}else{s.form-=3;s.stress+=5;}
                 if(choice.id().equals("match-support"))s.chemistry+=4;
                 narrative=success?"A chamada funcionou: seu time levou o round-chave. ":"O adversário leu a jogada e levou o round-chave. ";
                 m.stage++;
                 if(m.stage<3){m.score=m.stage==1?(success?5:4):(m.roundsWon>=1?9:7);m.opponentScore=m.stage==1?(success?4:5):(m.roundsWon>=2?7:9);heading=success?"Round conquistado":"Round perdido";narrative+="O mapa continua. Placar na próxima ocasião: "+m.score+"–"+m.opponentScore+".";advance=false;}
-                else {boolean won=m.roundsWon>=2;int loser=m.roundsWon==3?5:m.roundsWon==2?10:m.roundsWon==1?10:6;m.score=won?13:loser;m.opponentScore=won?loser:13;
-                    heading=(won?"VITÓRIA ":"DERROTA ")+m.score+"–"+m.opponentScore;tone=won?"good":"bad";if(won){s.wins++;s.seasonWins++;s.reputation+=6;earn(s,250*(s.contract==null?1:s.contract.tier()));}else{s.losses++;s.seasonLosses++;s.reputation+=1;}
+                else {boolean won=m.roundsWon>=2;int loser=m.roundsWon==3?8:m.roundsWon==2?11:m.roundsWon==1?10:8;m.score=won?13:loser;m.opponentScore=won?loser:13;
+                    heading=(won?"VITÓRIA ":"DERROTA ")+m.score+"–"+m.opponentScore;tone=won?"good":"bad";if(won){s.wins++;s.seasonWins++;s.reputation+=reserve?3:6;if(!reserve)earn(s,250*(s.contract==null?1:s.contract.tier()));}else{s.losses++;s.seasonLosses++;s.reputation+=1;}
                     narrative+="Fim do mapa em "+m.map+": "+Catalog.team(s)+" "+m.score+" x "+m.opponentScore+" "+m.opponent+". ";
                     if(oldPhase==6&&won&&m.finalEligible){s.titles++;String trophy=Catalog.circuit(s)+" "+s.year;s.trophies.add(new GameState.Trophy(s.year,trophy,Catalog.team(s)));earn(s,3000*(s.contract==null?1:s.contract.tier()));narrative+="CAMPEÃO! A temporada perfeita terminou com um troféu e premiação.";}else if(oldPhase==6)narrative+="A colocação foi registrada. A próxima temporada oferece outra chance.";
                     if(s.contract!=null&&s.contract.position().equals("Reserva"))narrative+="Como reserva, seus mapas são scrims de avaliação; não valem troféu oficial do circuito.";
