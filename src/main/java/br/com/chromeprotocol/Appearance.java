@@ -9,8 +9,8 @@ public record Appearance(String face, String skin, String hair, String hairColor
         face = valid(face, "angular", Set.of("angular", "soft", "broad"));
         skin = valid(skin, "warm", Set.of("porcelain", "sand", "warm", "copper", "umber", "ebony"));
         hair = valid(hair, "undercut", Set.of("undercut", "mohawk", "bob", "braids", "shaved"));
-        hairColor = valid(hairColor, "silver", Set.of("black", "silver", "cyan", "violet", "red", "gold"));
-        eyes = valid(eyes, "optic", Set.of("natural", "optic", "visor"));
+        hairColor = valid(hairColor, "black", Set.of("black", "silver", "cyan", "violet", "red", "gold"));
+        eyes = valid(eyes, "natural", Set.of("natural", "optic", "visor"));
         outfit = valid(outfit, "runner", Set.of("runner", "armor", "nomad"));
         accent = valid(accent, "cyan", Set.of("cyan", "acid", "magenta", "amber"));
     }

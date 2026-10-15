@@ -1,7 +1,7 @@
 {
-  "name": "chromeprotocol-browser-checks",
+  "name": "clutch-career-browser-checks",
   "private": true,
-  "version": "0.2.0",
+  "version": "1.0.0",
   "scripts": { "test:browser": "node scripts/test-browser.mjs" },
   "devDependencies": { "playwright": "1.62.1" }
 }

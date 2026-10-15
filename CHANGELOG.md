@@ -2,6 +2,27 @@
 
 Todas as alterações do ChromeProtocol são registradas aqui.
 
+## [1.0.0] — 2026-10-15
+
+### Alterado
+- Substituído o RPG cyberpunk por Clutch Career, modo carreira de e-sports com Valorant.
+- Nova interface esportiva com arena ilustrada, player card, agenda, placares e histórico.
+- Personalização adaptada para jersey, jaqueta, moletom, óculos e headset, sem implantes ou estética cyberpunk.
+- Pacote, Docker, workflow e documentação atualizados para 1.0.0.
+
+### Adicionado
+- Carreira de 21 temporadas, dos 15 aos 35 anos, com oito nacionalidades e quatro funções.
+- Preparação, peneiras, contratos, duas etapas, vida pessoal, finais/repescagem e balanço anual.
+- Organizações, propostas, salários mensais, contratos de uma ou duas temporadas, titular/reserva, renegociação e rescisão.
+- Partidas com três rounds-chave; decisões e desempenho acumulado definem placares e resultados.
+- Resultado imediato obrigatório após cada escolha, com narrativa e consequências antes/depois, persistindo após reload.
+- Evolução de atributos, forma, energia, estresse, química, reputação e seguidores.
+- Premiação, despesas por mês, títulos, estatísticas e históricos anual e de decisões.
+- Aposentadoria opcional a partir dos 23 e encerramento aos 35 anos.
+- Arquivo das campanhas anteriores, com download preservado após criar o jogador.
+- Testes de carreira completa nos caminhos de sucesso/falha, contratos, resultados pendentes, arquivo e navegador.
+- Autorização do proprietário para merge das próximas alterações após validação, com rollback via revert se necessário.
+
 ## [0.2.0] — 2026-10-15
 
 ### Adicionado

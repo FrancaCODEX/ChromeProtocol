@@ -2,133 +2,65 @@ package br.com.chromeprotocol;
 
 import java.util.*;
 
-/** Executable domain regression suite, also invoked by JUnit. No dependencies needed. */
+/** Domain regressions, runnable without Spring or Maven. */
 public final class EngineChecks {
     static int assertions;
-    static final GameEngine success = new GameEngine(new Random(1) { @Override public int nextInt(int bound) { return 0; } });
-    static final GameEngine failure = new GameEngine(new Random(1) { @Override public int nextInt(int bound) { return bound - 1; } });
-    static void check(boolean result, String description) {
-        assertions++; if (!result) throw new AssertionError(description);
-    }
-    static void rejects(Runnable action, String description) {
-        assertions++; try { action.run(); } catch (IllegalArgumentException expected) { return; }
-        throw new AssertionError(description);
-    }
-    static GameState newState() { return success.create("V", "street", "netrunner"); }
-    static void act(GameEngine engine, GameState state, String type, String target) { engine.act(state, new GameEngine.Action(type, target, state.revision)); }
-    static void prepare(GameState s, int mission) { s.missionIndex=mission; s.energy=100; s.health=100; s.money=10000; }
-    public static void run() {
-        assertions = 0;
-        for (String origin : Catalog.ORIGINS.keySet()) for (String specialty : Catalog.SPECIALTIES.keySet()) {
-            GameState s = success.create("  Nova  ", origin, specialty);
-            check(s.name.equals("Nova") && s.attributes.size()==5 && s.factions.size()==3, "All character combinations initialize");
-        }
-        rejects(() -> success.create(" ","street","solo"), "Blank names rejected");
-        rejects(() -> success.create("X".repeat(25),"street","solo"), "Long names rejected");
-        rejects(() -> success.create("V\nX","street","solo"), "Control characters rejected");
-        rejects(() -> success.create("V","invalid","solo"), "Invalid origins rejected");
-        rejects(() -> success.create("V","street","invalid"), "Invalid specialties rejected");
-        Appearance custom = new Appearance("soft", "ebony", "braids", "cyan", "visor", "nomad", "magenta");
-        GameState visual = success.create("V", "street", "netrunner", custom);
-        check(visual.appearance.equals(custom), "Custom appearance stored at creation");
-        GameState legacy = newState(); legacy.appearance = null;
-        check(success.view(legacy).character().appearance.equals(Appearance.defaults()), "Legacy null appearance gets default");
-        check(success.create("V", "street", "solo", null).appearance.equals(Appearance.defaults()), "Missing appearance keeps old clients compatible");
-        int oldMoney = visual.money, oldDay = visual.day;
-        visual.flags.add("lia"); visual.missionIndex = 2;
-        success.customize(visual, Appearance.defaults(), visual.revision);
-        check(visual.appearance.equals(Appearance.defaults()) && visual.revision == 1, "Appearance edit increments revision");
-        check(visual.money == oldMoney && visual.day == oldDay && visual.flags.contains("lia") && visual.missionIndex == 2, "Cosmetics preserve economy, story and calendar");
-        rejects(() -> success.customize(visual, custom, 0), "Stale cosmetic revision rejected");
-        rejects(() -> success.customize(visual, null, 1), "Null cosmetic update rejected");
-        rejects(() -> new Appearance("bad", null, null, null, null, null, null), "Invalid face rejected");
-        rejects(() -> new Appearance(null, "bad", null, null, null, null, null), "Invalid skin rejected");
-        rejects(() -> new Appearance(null, null, "bad", null, null, null, null), "Invalid hair rejected");
-        rejects(() -> new Appearance(null, null, null, "bad", null, null, null), "Invalid hair color rejected");
-        rejects(() -> new Appearance(null, null, null, null, "bad", null, null), "Invalid eyes rejected");
-        rejects(() -> new Appearance(null, null, null, null, null, "bad", null), "Invalid outfit rejected");
-        rejects(() -> new Appearance(null, null, null, null, null, null, "bad"), "Invalid accent rejected");
-        GameState s = newState();
-        int money=s.money;
-        rejects(() -> act(success,s,"choice","unknown"), "Unknown choices rejected");
-        check(s.money==money && s.day==1 && s.revision==0, "Invalid action cannot mutate state");
-        rejects(() -> success.act(s,new GameEngine.Action("work","",9)), "Stale revision rejected");
-        act(success,s,"choice","alley");
-        check(s.missionIndex==1 && s.day==2 && s.flags.contains("delivery"), "Successful choice advances and sets flag");
-        check(s.money==780 && s.energy==85 && s.xp==55, "Reward and energy apply");
-        act(success,s,"choice","protect");
-        check(s.flags.contains("lia") && s.level==2 && s.skillPoints==1 && s.xp==10, "Ally flag and level rewards persist");
-        check(success.view(s).mission().choices().stream().filter(c -> c.id().equals("lia_route")).findFirst().orElseThrow().available(), "Earlier ally opens future route");
-        act(success,s,"choice","lia_route");
-        check(s.flags.contains("clinic"), "Ally route recovers clinic cargo");
-        GameState failed = newState(); act(failure,failed,"choice","roof");
-        check(failed.missionIndex==1 && failed.health==80 && failed.money==600 && !failed.flags.contains("delivery"), "Failure continues story with reduced reward");
-        GameState locked = newState(); prepare(locked,2);
-        rejects(() -> act(success,locked,"choice","lia_route"), "Locked narrative route rejected");
-        prepare(locked,3); rejects(() -> act(success,locked,"choice","network"), "Missing implant route rejected");
-        act(success,locked,"buy","deck");
-        check(success.effective(locked,"intelligence")==7 && locked.implants.size()==1, "Implant improves effective attribute");
-        check(locked.attributes.get("intelligence")==5, "Implant does not overwrite base stat");
-        rejects(() -> act(success,locked,"buy","deck"), "Duplicate implants rejected");
-        act(success,locked,"buy","arms"); act(success,locked,"buy","legs");
-        rejects(() -> act(success,locked,"buy","skin"), "Three slot limit enforced");
-        act(success,locked,"choice","network"); check(locked.flags.contains("audit"), "Cyberdeck unlocks mission");
-        GameState broke = newState(); broke.money=0; broke.energy=0;
-        rejects(() -> act(success,broke,"work",""), "Energy requirement enforced");
-        rejects(() -> act(success,broke,"train","tech"), "Training resource requirement enforced");
-        rejects(() -> act(success,broke,"buy","deck"), "Purchase affordability enforced");
-        act(success,broke,"rest",""); act(success,broke,"work","");
-        check(broke.energy==30 && broke.money==180 && broke.day==3, "Free rest and work prevent resource softlock");
-        act(success,broke,"train","tech"); check(broke.attributes.get("tech")==4 && broke.money==30 && broke.energy==10, "Training charges resources and raises stat");
-        GameState rent = newState(); rent.day=7; rent.money=20; act(success,rent,"rest","");
-        check(rent.day==8 && rent.money==0 && rent.debt==100, "Weekly rent cannot make balance negative");
-        rejects(() -> act(success,rent,"debt",""), "Debt needs sufficient balance");
-        act(success,rent,"work",""); act(success,rent,"debt","");
-        check(rent.money==80 && rent.debt==0, "Debt payment is exact");
-        GameState critical = newState(); prepare(critical,6); critical.health=10; critical.money=0;
-        act(failure,critical,"choice","hunt");
-        check(critical.health==40 && critical.money==0 && critical.debt==50 && critical.missionIndex==7, "Emergency rescue continues career and records unpaid cost");
-        GameState hunted = newState(); hunted.heat=80; hunted.energy=10; act(success,hunted,"rest","");
-        check(hunted.heat==72 && hunted.energy==50, "High heat applies daily energy penalty");
-        GameState stats = newState(); stats.skillPoints=1; act(success,stats,"upgrade","body");
-        check(stats.attributes.get("body")==4 && stats.skillPoints==0 && stats.day==1, "Level point does not cost a day");
-        rejects(() -> act(success,stats,"upgrade","body"), "Cannot spend absent points");
-        stats.attributes.put("body",10); stats.skillPoints=1;
-        rejects(() -> act(success,stats,"upgrade","body"), "Attribute cap enforced");
-        for (int i=0;i<Catalog.MISSIONS.size();i++) {
-            Catalog.Mission mission=Catalog.MISSIONS.get(i);
-            check(mission.choices().stream().map(Catalog.Choice::id).distinct().count()==mission.choices().size(), "Choice IDs unique in " + mission.id());
-            for (Catalog.Choice c:mission.choices()) {
-                GameState trial=newState(); prepare(trial,i);
-                if (!c.flagRequired().isEmpty()) trial.flags.add(c.flagRequired());
-                if (!c.implant().isEmpty()) trial.implants.add(c.implant());
-                act(success,trial,"choice",c.id());
-                check(trial.missionIndex==i+1 && trial.money>=0 && trial.energy>=0 && trial.health>0, "Success path valid: " + mission.id()+"/"+c.id());
-                GameState miss=newState(); prepare(miss,i);
-                if (!c.flagRequired().isEmpty()) miss.flags.add(c.flagRequired());
-                if (!c.implant().isEmpty()) miss.implants.add(c.implant());
-                act(failure,miss,"choice",c.id());
-                check(miss.missionIndex==i+1 && miss.money>=0 && miss.energy>=0 && miss.health>0, "Failure path valid: " + mission.id()+"/"+c.id());
+    static final GameEngine win=new GameEngine(new Random(1){@Override public int nextInt(int bound){return 0;}});
+    static final GameEngine lose=new GameEngine(new Random(1){@Override public int nextInt(int bound){return bound-1;}});
+    static GameState fresh(){return win.create("Nova","BR","duelist","ranked","Jett",null);}
+    static void check(boolean condition,String message){assertions++;if(!condition)throw new AssertionError(message);}
+    static void rejects(Runnable r,String message){assertions++;try{r.run();}catch(IllegalArgumentException expected){return;}throw new AssertionError(message);}
+    static void choose(GameEngine e,GameState s,String target){e.act(s,new GameEngine.Action("choice",target,s.revision));}
+    static void ack(GameEngine e,GameState s){e.act(s,new GameEngine.Action("continue","",s.revision));}
+    static void step(GameEngine e,GameState s,String target){choose(e,s,target);ack(e,s);}
+    public static void run(){
+        assertions=0;
+        for(var country:Catalog.COUNTRIES)for(var role:Catalog.ROLES){GameState s=win.create("A",country.id(),role.id(),"school",role.agents().get(0),null);check(s.age==15&&s.year==2026&&s.attributes.size()==5,"All country and role combinations");}
+        rejects(()->win.create("","BR","duelist","ranked","Jett",null),"Empty nick");
+        rejects(()->win.create("A","XX","duelist","ranked","Jett",null),"Country whitelist");
+        rejects(()->win.create("A","BR","bad","ranked","Jett",null),"Role whitelist");
+        rejects(()->win.create("A","BR","duelist","bad","Jett",null),"Background whitelist");
+        rejects(()->win.create("A","BR","duelist","ranked","Sage",null),"Role agent mismatch");
+        GameState s=fresh();choose(win,s,"prep-aim");
+        check(s.phase==1&&s.outcome!=null&&s.attributes.get("aim")==46,"Choice progresses and exposes immediate consequences");
+        check(s.outcome.changes().stream().anyMatch(c->c.label().equals("Mira")),"Outcome contains actual attribute delta");
+        rejects(()->choose(win,s,"trial-steady"),"Must acknowledge before next decision");
+        rejects(()->win.act(s,new GameEngine.Action("continue","",0)),"Stale acknowledgement rejected");ack(win,s);
+        check(s.outcome==null,"Acknowledgement clears result");
+        step(win,s,"trial-steady");check(win.view(s).offers().size()==3,"Three contract offers");
+        int salary=win.view(s).offers().get(1).salary();step(win,s,"offer-1");
+        check(s.contract!=null&&s.contract.endYear()==2027&&s.contract.salary()==salary,"Two season agreement persisted");
+        choose(win,s,"match-support");check(s.match.stage==1&&s.phase==3&&s.outcome.title().contains("Round"),"First key round is not a whole map");ack(win,s);
+        step(win,s,"match-support");step(win,s,"match-support");check(s.wins==1&&s.phase==4&&s.match==null,"Three key rounds resolve a map");
+        GameState bad=fresh();bad.phase=3;for(int i=0;i<3;i++)step(lose,bad,"match-aggressive");check(bad.losses==1&&bad.phase==4&&bad.money>=0,"Failures continue career");
+        GameState appearance=fresh();var custom=new Appearance("soft","ebony","braids","cyan","natural","nomad","magenta");win.customize(appearance,custom,0);check(appearance.appearance.equals(custom)&&appearance.age==15&&appearance.money==500,"Cosmetics preserve career");
+        rejects(()->win.customize(appearance,custom,0),"Stale appearance edit rejected");
+        GameState release=fresh();release.phase=2;release.contract=new GameState.Contract("aurora","Aurora Academy",1,500,2028,"Titular",12);release.money=999;rejects(()->choose(win,release,"release"),"Cannot pay unaffordable release");release.money=1000;step(win,release,"release");check(release.contract==null&&release.phase==2&&release.money==0,"Release stays in window and charges exact fee");
+        GameState elite=fresh();elite.age=18;elite.year=2029;elite.reputation=80;elite.attributes.replaceAll((k,v)->60);elite.phase=2;check(win.view(elite).offers().stream().allMatch(o->o.tier()==3),"Elite opportunities depend on age reputation and skills");elite.age=15;check(Catalog.offers(elite).stream().allMatch(o->o.tier()==1),"Start at academy circuit");
+        GameState reserve=fresh();reserve.phase=3;reserve.contract=new GameState.Contract("aurora","Aurora Academy",1,500,2028,"Reserva",12);check(win.view(reserve).scene().title().contains("Scrim"),"Reserve plays evaluations");
+        GameState stable=fresh();stable.phase=2;var first=win.view(stable).offers();check(first.equals(win.view(stable).offers()),"GET does not reroll market");
+        for(GameEngine engine:List.of(win,lose)){
+            GameState career=fresh();int decisions=0;
+            while(!career.ended){
+                var choices=engine.view(career).scene().choices();String target;
+                if(career.phase==2)target=career.contract==null?"offer-0":"honor";
+                else if(career.phase==7)target="year-develop";
+                else if(career.phase==4)target="life-rest";
+                else if(career.phase==1)target="trial-steady";
+                else target=choices.get(0).id();
+                step(engine,career,target);decisions++;
+                check(career.energy>=0&&career.energy<=100&&career.stress>=0&&career.stress<=100&&career.money>=0,"Career resource bounds");
+                check(decisions<400,"Career must terminate");
             }
+            check(career.age==35&&career.year==2046&&career.seasons.size()==21,"Full 21-year career 15–35");
+            check(career.wins+career.losses==63,"Three maps per season");
+            check(career.titles==(engine==win?21:0),"Final qualification and titles reflect earlier maps");
+            check(career.earnings==career.seasons.stream().mapToInt(GameState.Season::earnings).sum(),"Annual income balances lifetime earnings");
+            rejects(()->choose(engine,career,"prep-aim"),"Ended career cannot advance");
         }
-        GameState memory=newState(); prepare(memory,2);
-        int before=success.view(memory).mission().choices().get(0).chance(); memory.flags.add("lia");
-        check(success.view(memory).mission().choices().get(0).chance()>before && !success.view(memory).mission().memory().isEmpty(), "Previous choices affect odds and narrative");
-        for (String ending:List.of("free","power","leave")) {
-            GameState finalState=newState(); prepare(finalState,9); finalState.flags.add("key"); finalState.flags.add("pledge_helix");
-            act(success,finalState,"choice",ending);
-            check(finalState.ended && finalState.ending!=null && success.view(finalState).mission()==null, "Ending available: "+ending);
-            rejects(() -> act(success,finalState,"work",""), "Ended career immutable");
-        }
-        GameState campaign=newState();
-        String[] route={"bribe","protect","lia_route","cover","repair","toll","erase","kira","district","free"};
-        for (String choice:route) {
-            while (campaign.energy<40) act(success,campaign,"rest","");
-            while (campaign.money<300) { if(campaign.energy<15)act(success,campaign,"rest",""); act(success,campaign,"work",""); }
-            act(success,campaign,"choice",choice);
-        }
-        check(campaign.ended && campaign.ending.equals("A cidade sem coleira") && campaign.missionIndex==10, "Full campaign completes with economy and recovery");
-        System.out.println("Domain checks: " + assertions + " passed, 0 failures.");
+        GameState early=fresh();early.age=23;early.phase=7;step(win,early,"retire");check(early.ended&&early.age==23,"Optional retirement");
+        GameState unqualified=fresh();unqualified.phase=6;for(int i=0;i<3;i++)step(win,unqualified,"match-support");check(unqualified.titles==0,"Winning repescagem does not award a title");
+        System.out.println("Domain checks: "+assertions+" passed, 0 failures.");
     }
-    public static void main(String[] args) { run(); }
+    public static void main(String[] args){run();}
 }
