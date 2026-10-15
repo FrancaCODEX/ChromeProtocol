@@ -58,7 +58,7 @@ public final class Tour {
         };
     }
     static GameState.Series fixture(GameState s){
-        if(s.currentSeries!=null)return s.currentSeries;var c=progress(s);var f=new GameState.Series();f.year=s.year;f.phase=s.phase;f.id=s.year+":"+s.phase+":"+String.format(Locale.ROOT,"%02d",c.played);f.competition=Calendar.reserve(s)?"Scrim — "+Calendar.competition(s):Calendar.competition(s);f.round=round(s,c);f.critical=critical(s,c);f.official=!Calendar.reserve(s);
+        if(s.currentSeries!=null)return s.currentSeries;var c=progress(s);var f=new GameState.Series();f.year=s.year;f.phase=s.phase;f.id=s.year+":"+s.phase+":"+String.format(Locale.ROOT,"%02d",c.seriesOffset+c.played);f.competition=Calendar.reserve(s)?"Scrim — "+Calendar.competition(s):Calendar.competition(s);f.round=round(s,c);f.critical=critical(s,c);f.official=!Calendar.reserve(s);
         var names=pool(s);f.opponent=c.part.equals("groups")?names.get(groupOpponent(c.groupWins+c.groupLosses)-1):names.get(c.played%names.size());
         f.bestOf=grandFinal(c)||c.part.equals("bracket")&&c.bracketLosses==1&&c.lowerRemaining==1?5:3;return f;
     }

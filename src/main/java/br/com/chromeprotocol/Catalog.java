@@ -141,8 +141,16 @@ public final class Catalog {
     /** Reconcile older saves and promote on permanent growth without changing pay or term. */
     public static void ensureStarter(GameState s) {
         var old=s.contract;
-        if(old!=null && s.match==null && s.currentSeries==null && overall(s)>=STARTER_OVR && old.position().equals("Reserva"))
+        if(old!=null && s.match==null && s.currentSeries==null && overall(s)>=STARTER_OVR && old.position().equals("Reserva")) {
             s.contract=new GameState.Contract(old.orgId(),old.name(),old.tier(),old.salary(),old.endYear(),"Titular",old.pressure());
+            // Scrims stay in history, but cannot seed the official table or earn a trophy.
+            var previous=s.campaigns.remove(s.phase);
+            if(previous!=null) {
+                var official=Tour.progress(s);
+                official.seriesOffset=previous.seriesOffset+previous.played;
+                s.campaigns.put(s.phase,official);
+            }
+        }
     }
     public static List<Offer> offers(GameState s) {
         String region=country(s.nationality).region();

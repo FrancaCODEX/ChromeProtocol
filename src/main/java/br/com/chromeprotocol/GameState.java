@@ -25,7 +25,7 @@ public class GameState {
     public List<SeriesResult> series = new ArrayList<>();
     public static class Campaign {
         public String part;
-        public int played, wins, losses, groupWins, groupLosses, upperWins, bracketLosses, lowerRemaining, seed;
+        public int seriesOffset, played, wins, losses, groupWins, groupLosses, upperWins, bracketLosses, lowerRemaining, seed;
         public boolean done, champion, qualified;
     }
     public static class Series {

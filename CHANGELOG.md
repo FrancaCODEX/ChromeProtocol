@@ -6,7 +6,7 @@
 - Retrato Estúdio com DiceBear/Avataaars local, editor com escolha de estilo e compatibilidade dos retratos clássicos.
 - Nove imagens de troféus fornecidas pelo usuário, seleção por competição, galeria de referência e ampliação acessível.
 - Renovação garantida após expiração, com um ano adicional, salário mínimo igual ao anterior e escolha ao lado de novas ofertas.
-- Titularidade garantida a partir de 80 de OVR: promoção do contrato atual e propostas apenas de titular, preservando séries iniciadas.
+- Titularidade garantida a partir de 80 de OVR: promoção do contrato atual e propostas apenas de titular, preservando séries iniciadas e separando os resultados de scrim da nova campanha oficial.
 - Regressões de motor/API para renovação, promoção, persistência e compatibilidade; navegador para troca de estilos, galeria, renovação e layouts desktop/mobile.
 
 Todas as alterações do ChromeProtocol são registradas aqui.
