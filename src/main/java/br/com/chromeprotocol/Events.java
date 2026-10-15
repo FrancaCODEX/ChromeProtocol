@@ -78,7 +78,27 @@ public final class Events {
         l("Uma entrevista antes do palco.","Uma conversa ao vivo pode levar sua história a outra audiência.",
             o("ambition","Falar sobre seus objetivos","Assumir a ambição diante da torcida.","communication",5,Catalog.bonus("communication",3),600,900,0,-5,5),
             o("credit","Valorizar a equipe","Compartilhar os méritos e os planos do grupo.","communication",0,Catalog.bonus("communication",2),300,450,12,-3,-2),
-            o("short","Manter a entrevista curta","Preservar o foco e a tranquilidade.","",0,Catalog.bonus("composure",2),100,100,4,10,-8))
+            o("short","Manter a entrevista curta","Preservar o foco e a tranquilidade.","",0,Catalog.bonus("composure",2),100,100,4,10,-8)),
+        l("A comissão marcou uma conversa individual.","Seu treinador trouxe pontos do último bloco. A conversa é sobre o seu papel, não sobre comandar o elenco.",
+            o("feedback","Pedir exemplos no VOD","Transformar o feedback em ações concretas.","discipline",1,Catalog.bonus("tactics",3),0,60,8,-6,-3),
+            o("role","Explicar como você enxerga sua função","Alinhar expectativas com a comissão.","communication",2,Catalog.bonus("communication",3),0,100,12,-4,-3),
+            o("listen","Ouvir e organizar prioridades","Preparar um plano pessoal sustentável.","",0,Catalog.bonus("discipline",2),0,30,6,10,-8)),
+        l("Seu nome virou discussão nas redes.","Parte da torcida elogiou; outra parte cobrou. Você decide como responder.",
+            o("post","Publicar uma análise respeitosa","Explicar suas escolhas sem atacar ninguém.","communication",3,Catalog.bonus("communication",2),200,500,2,-7,3),
+            o("mute","Silenciar e recuperar o foco","Reservar a energia para seus próximos compromissos.","",0,Catalog.bonus("composure",2),0,40,3,20,-15),
+            o("team","Conversar com um colega","Buscar apoio no grupo e voltar ao treino.","",0,Catalog.bonus("communication",1,"composure",1),0,80,12,8,-8)),
+        l("Um projeto social quer sua participação.","Uma oficina de jogos procura alguém para apresentar o lado humano do competitivo.",
+            o("visit","Participar da oficina","Compartilhar sua trajetória e ouvir outras histórias.","communication",1,Catalog.bonus("communication",3),200,500,5,-8,-4),
+            o("record","Gravar uma aula curta","Apoiar o projeto sem comprometer a agenda.","discipline",1,Catalog.bonus("discipline",2),150,300,3,-4,-2),
+            o("later","Combinar uma data para a pausa","Proteger a rotina e manter a oportunidade aberta.","",0,Catalog.bonus("discipline",1),0,50,2,12,-5)),
+        l("O próximo convite veio de fora.","Um analista estrangeiro quer conversar sobre sua leitura. Ainda não é uma proposta de contrato.",
+            o("talk","Praticar a conversa internacional","Apresentar suas ideias e ouvir outra escola de jogo.","communication",4,Catalog.bonus("communication",3),300,350,2,-7,4),
+            o("study","Preparar uma análise escrita","Organizar o raciocínio antes de responder.","tactics",1,Catalog.bonus("tactics",3),200,200,3,-5,-1),
+            o("coach","Pedir orientação ao seu coach","Aprender a lidar com contatos profissionais.","",0,Catalog.bonus("discipline",2),0,70,8,8,-5)),
+        l("Você chegou à pausa com planos demais.","Conteúdo, estudo e treino disputam as mesmas horas. Escolha uma prioridade pessoal.",
+            o("plan","Organizar um calendário realista","Criar espaço para treinar e descansar.","",0,Catalog.bonus("discipline",3),0,60,4,15,-10),
+            o("create","Produzir uma série sobre sua temporada","Transformar aprendizado em conteúdo.","communication",3,Catalog.bonus("communication",2),700,650,0,-12,6),
+            o("offline","Passar alguns dias offline","Voltar com a cabeça mais leve.","",0,Catalog.bonus("composure",3),0,20,4,30,-20))
     );
     public static Round round(GameState s,int stage){return ROUNDS.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,stage),ROUNDS.size()));}
     public static Life life(GameState s){return LIFE.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,s.eventVariant),LIFE.size()));}

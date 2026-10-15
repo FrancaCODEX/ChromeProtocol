@@ -2,7 +2,7 @@
 
 **O próximo round é seu.** Modo carreira web de e-sports, começando por Valorant. Você cria um jogador de 15 anos e toma decisões dentro e fora do servidor até os 35 anos: nacionalidade, função, peneiras, contratos, partidas e legado.
 
-Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.1.0**.
+Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.2.0**.
 
 ## O que dá para jogar
 
@@ -137,3 +137,17 @@ Snapshot de referência consultado em 15/10/2026. Não há conexão com serviço
 - [Ask VALORANT #7](https://playvalorant.com/en-us/news/dev/ask-valorant-7/) e [Patch 1.11](https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-1-11/): referência histórica de combate/assistências. O ACS solicitado pelo jogo é uma aproximação simulada, calculada a partir do combatScore por round, sem telemetria real; não equivale ao Performance Score atual do cliente.
 
 Os bônus já estão incluídos no atributo mostrado (limite 99). Não são somados outra vez ao calcular o OVR. A aba Estatísticas agrega apenas mapas oficiais; o filtro mostra também scrims identificadas. O ACS geral soma combatScore e divide pelo total de rounds, enquanto KD usa os totais de kills e mortes. Nenhuma média é obtida somando médias de mapas. Prêmios são conquistas desta simulação; os critérios ficam visíveis na interface.
+
+## Menu e rotina pessoal (1.2)
+
+A entrada mostra um menu com **Continuar carreira**, **Nova carreira**, guia e dossiê do jogador salvo. Resultados e cartas pendentes continuam abrindo direto para a decisão correspondente. A criação mantém a personalização e acrescenta radar/OVR inicial ao vivo; a prévia acompanha função, trajetória, IGL e modo de evolução.
+
+**Minha rotina** oferece quatro opções estáveis por período, entre nove atividades: VOD, fundamentos, transmissão, família, duo com colega, estudos, idioma, mentoria e recuperação. Apenas uma atividade pode ser feita em cada fase do ano; não avança o calendário. Não pode ser usada entre rounds-chave ou enquanto uma recompensa anual estiver pendente. Os efeitos e ganhos são exibidos antes da escolha, e o resultado/histórico ficam salvos. A quota é verificada no servidor e não reinicia ao atualizar a página.
+
+Escolha **um objetivo anual** até a janela de contratos: manter contrato ativo, vencer três mapas oficiais, completar três mapas com ACS médio 230, ganhar oito pontos de comunicação ou conquistar 1.500 novos seguidores. As metas relativas começam no momento da escolha. Avaliação e recompensa em dinheiro/atributos são automáticas no balanço anual, antes da carta; cada meta só paga uma vez. Uma meta não cumprida não reduz habilidades. A próxima temporada abre nova escolha. Ganhos respeitam o limite 99 e o modo Talento da geração.
+
+O usuário controla somente o jogador. Não há compra de outros atletas, escalação do quinteto, decisão de demitir colegas ou gestão financeira da organização. A central reúne a agenda pessoal, o objetivo anual e informações do vínculo atual. O histórico registra OVR ao encerrar novas temporadas (antes da carta); temporadas antigas sem esse número mostram um traço.
+
+Referências analisadas em 15/10/2026: [ValorantCareer](https://valorantcareer.com/) para hierarquia visual da criação e radar; [Rift Career](https://riftscore.net/valorant/) para progressão, comparação de propostas e histórico anual. O código, textos, avatar e implementação são próprios. O modo de jogador do ValorantSimulator foi indicado como direção pelo usuário, mas não foi inspecionado: o navegador recusou o domínio por uma preferência de permissão salva, mesmo após nova autorização em mensagem. Não copiamos conteúdo nem atribuímos funções não verificadas ao site.
+
+Continua sendo uma simulação simplificada de competições: nomes oficiais e rotas de elegibilidade estão presentes, mas não todos os jogos, séries MD3/MD5, grupos, chaveamentos ou pontuações de cada liga real. Estatísticas são geradas pela simulação e não refletem partidas reais.

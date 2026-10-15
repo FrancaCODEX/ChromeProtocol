@@ -96,4 +96,19 @@ class GameApiTest {
         assertEquals(old,repository.findById(id).orElseThrow().state,"Read must not overwrite save");
     }
 
+    @Test void optionalRoutinePersistsWithoutAdvancingOrRepeating() throws Exception {
+        Cookie cookie=create();var initial=mvc.perform(get("/api/game").cookie(cookie)).andReturn();var data=mapper.readTree(initial.getResponse().getContentAsString());String activity=data.path("game").path("activities").get(0).path("item").path("id").asText();String body=mapper.writeValueAsString(new GameEngine.Action("activity",activity,0));
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.character.phase").value(0)).andExpect(jsonPath("$.character.activitySlots.length()").value(1)).andExpect(jsonPath("$.character.outcome").exists());
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.activitySlots[0]").value("2026:0"));
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action("continue","",1)))).andExpect(status().isOk());
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action("activity",activity,2)))).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.revision").value(2)).andExpect(jsonPath("$.game.character.phase").value(0));
+    }
+    @Test void selectedGoalAndOldSeasonWithoutOverallRemainCompatible() throws Exception {
+        Cookie cookie=create();mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action("goal","community",0))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.character.seasonGoal").value("community")).andExpect(jsonPath("$.character.goalStart").value(100)).andExpect(jsonPath("$.character.phase").value(0));
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.seasonGoal").value("community"));
+        var old=mapper.readValue("{\"year\":2026,\"age\":15,\"organization\":\"Mix\",\"wins\":1,\"losses\":2,\"titles\":0,\"earnings\":500}",GameState.Season.class);assertNull(old.overall(),"Do not invent old OVR");assertEquals(500,old.earnings());
+    }
+
 }
