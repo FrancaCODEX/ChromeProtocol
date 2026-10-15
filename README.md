@@ -2,7 +2,7 @@
 
 **O próximo round é seu.** Modo carreira web de e-sports, começando por Valorant. Você cria um jogador de 15 anos e toma decisões dentro e fora do servidor até os 35 anos: nacionalidade, função, peneiras, contratos, partidas e legado.
 
-Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.3.0**.
+Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.4.0**.
 
 ## O que dá para jogar
 
@@ -164,3 +164,15 @@ A prática a cada quatro séries dá +1 no atributo principal e +1 em disciplina
 Dilemas usam quinze modelos e evitam repetir um modelo já visto no mesmo ano enquanto houver outro disponível. A rotina opcional, investimentos e metas continuam acessíveis entre ocasiões. Troféus de Champions, Masters e regionais usam três ícones SVG próprios, locais, visíveis na sala e ao lado da temporada vencedora. São interpretações gráficas do jogo, sem reproduzir fotografias oficiais. O histórico mostra OVR, séries V/D, resultados por etapa e renda por ano.
 
 Fontes de formato consultadas em 15/10/2026: [Stage 1 EMEA](https://valorantesports.com/en-GB/news/2026-vct-emea-stage-1-format-dates-and-tickets), [Masters Santiago](https://valorantesports.com/en-GB/news/masters-santiago-everything-you-need-to-know), [Champions Shanghai](https://valorantesports.com/pt-BR/news/champions-shanghai-everything-you-need-to-know). São referências de desenho, não sincronização com competições ao vivo.
+
+## Temporada automática e personalização (1.4)
+
+**Temporada automática** é o ritmo padrão do formulário. Você decide aproximadamente quatro vezes por ano: foco de desenvolvimento, time/contrato, um acontecimento importante no meio do ano e carta de evolução. A escolha do contrato simula automaticamente todas as séries até a pausa do meio do ano; responder ao acontecimento simula o restante, registra premiações, salário/despesas, objetivo e balanço, e oferece as cartas. Não há botões para avançar cada série, rounds obrigatórios, pausas por falta de vaga, tela de prêmios ou confirmação extra por resultado. O resultado fica visível no painel; cada série e mapa continua disponível em Estatísticas/Calendário. Compras e rotina são opcionais nas pausas. A partir dos 23 anos, também é possível encerrar a carreira na pré-temporada.
+
+O modo detalhado continua disponível. O ritmo antigo `run`, em blocos de quatro, continua compatível com saves existentes, mas o botão de ritmo e o formulário oferecem a nova temporada automática. Pode mudar o ritmo entre decisões, preservando contratos, atributos, mapas, dinheiro e conquistas. Recarregar não refaz sorteios nem repete a simulação: resultado, revisão e todos os mapas são gravados na mesma transação. O navegador confirma automaticamente o resultado salvo e mostra as consequências ao lado da próxima decisão; se a conexão interromper a confirmação, o resultado permanece no servidor.
+
+O painel automático mostra escolhas à esquerda e histórico anual à direita, com idade/ano, organização e logo, OVR registrado, ACS, K/D, kills e conquistas. Troféus também aparecem agrupados. O OVR histórico continua sendo o valor de encerramento do ano, antes da carta; não é recalculado a partir dos atributos atuais.
+
+O editor agora tem abas **Rosto**, **Cabelo** e **Estilo**: três rostos, seis peles, nove cabelos, oito cores de cabelo, cinco barbas, cinco cores de olhos, quatro estilos de óculos, três acessórios de cabeça, três roupas, sete cores de uniforme e três estampas de jersey. Óculos e headset podem ser combinados. Cabelos, barbas, acessórios e roupas têm miniaturas. Editar durante a carreira é cosmético e mantém atributos/temporada/contratos. Os sete campos originais continuam aceitos e o servidor traduz óculos/headset antigos para os novos campos; opções inválidas são rejeitadas. As ilustrações SVG são próprias e locais.
+
+As capturas enviadas pelo proprietário e [Rift Career](https://riftscore.net/valorant/) orientaram o fluxo compacto de escolhas e histórico. A captura de ValorantCareer também foi usada como referência visual; o site não retornou conteúdo na ferramenta de consulta nesta revisão. Não foi copiado código de nenhum dos sites.

@@ -60,6 +60,13 @@ public final class GameEngine {
     private Scene scene(GameState s){
         var c=new ArrayList<Choice>();String title,description,tag;
         if(s.pendingCards){for(var card:cardOffers(s)){String benefits=String.join(" · ",card.gains().entrySet().stream().map(e->Catalog.ATTRIBUTES.get(e.getKey())+" +"+e.getValue()).toList());c.add(option(s,"card:"+card.id(),card.name(),card.rarity()+" · "+card.detail(),"",0,benefits+" · chance permanente +"+card.chanceBonus()+"%"));}return new Scene("CARTAS DE EVOLUÇÃO","A temporada acaba. O talento fica.","Escolha uma das três cartas de "+s.year+". Os ganhos são permanentes, conhecidos antes da escolha e não expiram. Só uma carta pode ser escolhida por temporada.",date(s),List.copyOf(c));}
+        if(s.pace.equals("season")&&s.phase==0){
+            c.add(option(s,"season-focus:aim","Lapidar minha mecânica","Priorizar precisão e consistência nos duelos.","",0,gainsText(s,Catalog.bonus("aim",4,"discipline",2))));
+            c.add(option(s,"season-focus:tactics","Evoluir minha leitura","Revisar VODs, utilitários e adaptações.","",0,gainsText(s,Catalog.bonus("tactics",4,"composure",2))));
+            c.add(option(s,"season-focus:communication","Crescer como líder","Melhorar chamadas e confiança no quinteto.","",0,gainsText(s,Catalog.bonus("communication",4,"discipline",2))));
+            if(s.age>=23)c.add(option(s,"season-retire","Encerrar minha trajetória","Guardar a carreira e todas as suas conquistas.","",0,"Encerramento da carreira"));
+            return new Scene("TEMPORADA AUTOMÁTICA","Qual será seu próximo salto?","Escolha seu desenvolvimento e seu time. Partidas, classificações e premiações são simuladas; você decide as oportunidades e a carta anual.",date(s),List.copyOf(c));
+        }
         if(s.tourEvent){var event=Events.life(s);for(var o:event.choices())c.add(option(s,"life:"+o.id(),o.title(),o.description(),o.attribute(),o.difficulty(),gainsText(s,o.bonuses())+" · retorno varia com o resultado"));return new Scene("ENTRE AS SÉRIES",event.title(),event.description(),date(s),List.copyOf(c));}
         if(s.pace.equals("run")&&s.phase==0){c.add(option(s,"run-prepare","Preparar e abrir o mercado","Sua rotina combina treino e um teste de consistência. Você escolhe o próximo contrato.","",0,"Leitura +3 · disciplina +5 · reputação +4"));return new Scene("RUN / NOVA TEMPORADA","O próximo capítulo começa agora.","Avance por blocos de séries, tome decisões de carreira e acompanhe o legado. Você ainda pode assumir qualquer momento decisivo.",date(s),List.copyOf(c));}
         if(Calendar.match(s)&&s.match==null&&!s.legacyMap){
@@ -91,12 +98,39 @@ public final class GameEngine {
         }
         return new Scene(tag,title,description,date(s),List.copyOf(c));
     }
+    /** One server transaction resolves a choice and all routine competition until the next meaningful pause. */
     public void act(GameState s,Action action){
+        var before=snapshot(s);String when=date(s);int startYear=s.year;
+        actOne(s,action);
+        if(!s.pace.equals("season")||s.ended||s.pendingCards||s.match!=null||!(action.type().equals("choice")||action.type().equals("pace")||action.type().equals("continue")))return;
+        if(s.phase==0||s.phase==2||s.phase==7)return;
+        var original=s.outcome;var batch=autoSeason(s);if(batch.isEmpty()&&s.phase!=12&&!s.pendingCards)return;
+        normalize(s);String narrative=(original==null?"":original.narrative()+" ")+"A agenda foi simulada automaticamente: "+batch.size()+" séries, com todos os mapas e estatísticas salvos. "+(s.pendingCards?"Temporada concluída. Escolha sua carta de evolução para o próximo ano.":"Um acontecimento importante pede sua escolha.");
+        var changes=changes(before,snapshot(s));String title=s.pendingCards?"Temporada "+startYear+" concluída":"Seu próximo passo fora do servidor";
+        s.outcome=new GameState.Outcome(title,narrative,"good",when,changes,null,List.copyOf(batch));
+        if(original!=null&&!s.history.isEmpty())s.history.remove(0);
+        s.history.add(0,new GameState.History(when,title,narrative,"good",changes));
+    }
+    private List<GameState.SeriesResult> autoSeason(GameState s){
+        var batch=new ArrayList<GameState.SeriesResult>();int guard=0;
+        while(!s.ended&&!s.pendingCards&&s.phase!=0&&s.phase!=2&&s.phase!=7){
+            require(++guard<100,"A simulação atingiu o limite de segurança.");
+            s.tourEvent=false;
+            if(Calendar.match(s)){
+                s.currentSeries=Tour.fixture(s);var f=s.currentSeries;while(f.wins<f.bestOf/2+1&&f.losses<f.bestOf/2+1)simulateMap(s,f,0);batch.add(finishSeries(s,"automatic"));normalize(s);
+            }else if(s.phase==1){skill(s,"discipline",2);s.reputation+=4;advance(s);}
+            else if(s.phase==11){for(var award:annualAwards(s))addAward(s,award);advance(s);}
+            else if(s.phase==12){Catalog.ATTRIBUTES.keySet().forEach(k->skill(s,k,2));s.energy=90;s.stress-=15;settle(s,1);settleGoal(s);finishYear(s);s.pendingCards=true;}
+            else advance(s);
+        }
+        s.tourEvent=false;return batch;
+    }
+    private void actOne(GameState s,Action action){
         require(action!=null&&action.revision()==s.revision,"Sua carreira mudou em outra aba. Atualize antes de continuar.");
         if("continue".equals(action.type())){require(s.outcome!=null,"Nenhum resultado pendente.");s.outcome=null;s.revision++;return;}
         require(s.outcome==null,"Leia o resultado antes de fazer outra escolha.");require(!s.ended,"Sua carreira terminou. Comece outra história.");
         var before=snapshot(s);String when=date(s);
-        if("pace".equals(action.type())){require(Set.of("detailed","run").contains(action.target()),"Ritmo inválido.");require(s.match==null&&!s.pendingCards,"Conclua o momento ou a recompensa antes de mudar o ritmo.");s.pace=action.target();record(s,"Ritmo: "+(s.pace.equals("run")?"Run":"Detalhado"),"O ritmo muda o avanço e as pausas. Atributos, chances, contratos e progresso permanecem os mesmos.","good",when,before,null);return;}
+        if("pace".equals(action.type())){require(Set.of("detailed","run","season").contains(action.target()),"Ritmo inválido.");require(s.match==null&&!s.pendingCards,"Conclua o momento ou a recompensa antes de mudar o ritmo.");s.pace=action.target();record(s,"Ritmo: "+(s.pace.equals("season")?"Temporada automática":s.pace.equals("run")?"Run em blocos":"Detalhado"),"O ritmo muda o avanço e as pausas. Atributos, chances, contratos e progresso permanecem os mesmos.","good",when,before,null);return;}
         if("activity".equals(action.type())){
             require(PersonalLife.available(s),"Você já usou este período ou tem um mapa/recompensa em andamento.");
             var item=PersonalLife.activities(s).stream().filter(a->a.id().equals(action.target())).findFirst().orElseThrow(()->new IllegalArgumentException("Atividade indisponível neste período."));
@@ -112,6 +146,8 @@ public final class GameEngine {
         var choice=scene(s).choices().stream().filter(c->c.id().equals(action.target())).findFirst().orElseThrow(()->new IllegalArgumentException("Escolha inválida para esta ocasião."));require(choice.available(),"Saldo insuficiente.");
         boolean success=choice.chance()==100||random.nextInt(100)<choice.chance();String narrative,heading=choice.title(),tone=success?"good":"bad";boolean advance=true;GameState.MapStats mapStats=null;
         String id=choice.id();
+        if(id.equals("season-retire")){s.ended=true;s.ending="Seu legado no competitivo";record(s,"Carreira encerrada","Você escolheu encerrar sua trajetória aos "+s.age+" anos. Resultados, estatísticas e conquistas continuam no histórico.","good",when,before,null);return;}
+        if(id.startsWith("season-focus:")){String key=id.substring(13);skill(s,key,4);skill(s,key.equals("tactics")?"composure":"discipline",2);s.energy=90;s.stress=Math.max(0,s.stress-10);advance(s);skill(s,"discipline",2);s.reputation+=4;advance(s);normalize(s);record(s,"Desenvolvimento definido","Seu foco de evolução foi aplicado. Escolha o contrato; a primeira metade da temporada será simulada automaticamente.","good",when,before,null);return;}
         if(id.equals("run-prepare")){skill(s,"tactics",3);skill(s,"discipline",5);s.reputation+=4;s.energy+=10;advance(s);advance(s);normalize(s);record(s,"Pronto para o mercado","Treino e teste de consistência concluídos. Agora a escolha de contrato é sua.","good",when,before,null);return;}
         if(id.startsWith("series-")){seriesAction(s,id,when,before);return;}
         if(id.startsWith("card:")){
@@ -215,7 +251,7 @@ public final class GameEngine {
     private void skill(GameState s,String key,int amount){s.attributes.compute(key,(k,v)->Math.min(99,v+growth(s,amount)));}
     private void normalize(GameState s){s.energy=clamp(s.energy,0,100);s.form=clamp(s.form,0,100);s.stress=clamp(s.stress,0,100);s.chemistry=clamp(s.chemistry,0,100);s.reputation=clamp(s.reputation,0,200);s.money=Math.max(0,s.money);}
     private String date(GameState s){return Catalog.MONTHS.get(s.phase)+" de "+s.year+" · "+s.age+" anos";}
-    private Map<String,String> snapshot(GameState s){var m=new LinkedHashMap<String,String>();m.put("Saldo","R$ "+s.money);m.put("Energia",""+s.energy);m.put("Forma",""+s.form);m.put("Estresse",""+s.stress);m.put("Química",""+s.chemistry);m.put("Reputação",""+s.reputation);m.put("Seguidores",""+s.followers);Catalog.ATTRIBUTES.forEach((k,v)->m.put(v,""+s.attributes.get(k)));m.put("Organização",Catalog.team(s));m.put("Salário mensal",s.contract==null?"Sem salário":"R$ "+s.contract.salary());m.put("Títulos",""+s.titles);m.put("Mapas vencidos",""+s.wins);m.put("Mapas perdidos",""+s.losses);m.put("Séries vencidas",""+s.seriesWins);m.put("Séries perdidas",""+s.seriesLosses);m.put("Prêmios individuais",""+s.awards.size());m.put("Bônus de chance permanente",s.cardChanceBonus+"%");m.put("IGL",s.igl?"Sim":"Não");m.put("Idade",""+s.age);m.put("Temporada",""+s.year);return m;}
+    private Map<String,String> snapshot(GameState s){var m=new LinkedHashMap<String,String>();m.put("OVR",""+Catalog.overall(s));m.put("Saldo","R$ "+s.money);m.put("Energia",""+s.energy);m.put("Forma",""+s.form);m.put("Estresse",""+s.stress);m.put("Química",""+s.chemistry);m.put("Reputação",""+s.reputation);m.put("Seguidores",""+s.followers);Catalog.ATTRIBUTES.forEach((k,v)->m.put(v,""+s.attributes.get(k)));m.put("Organização",Catalog.team(s));m.put("Salário mensal",s.contract==null?"Sem salário":"R$ "+s.contract.salary());m.put("Títulos",""+s.titles);m.put("Mapas vencidos",""+s.wins);m.put("Mapas perdidos",""+s.losses);m.put("Séries vencidas",""+s.seriesWins);m.put("Séries perdidas",""+s.seriesLosses);m.put("Prêmios individuais",""+s.awards.size());m.put("Bônus de chance permanente",s.cardChanceBonus+"%");m.put("IGL",s.igl?"Sim":"Não");m.put("Idade",""+s.age);m.put("Temporada",""+s.year);return m;}
     private List<GameState.Change> changes(Map<String,String> a,Map<String,String> b){var list=new ArrayList<GameState.Change>();a.forEach((key,value)->{if(!value.equals(b.get(key)))list.add(new GameState.Change(key,value,b.get(key)));});return List.copyOf(list);}
     private static int clamp(int n,int min,int max){return Math.max(min,Math.min(max,n));}
     private static double ratio(int kills,int deaths){return (double)kills/Math.max(1,deaths);}

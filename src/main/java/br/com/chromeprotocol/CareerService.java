@@ -60,7 +60,7 @@ public class CareerService {
     public boolean hasArchive(UUID id) {
         return id != null && repository.findById(id).map(c -> !isCurrent(c.state) || c.archivedCareerId != null).orElse(false);
     }
-    private void setPace(GameState state,String pace){if(pace!=null&&!java.util.Set.of("detailed","run").contains(pace))throw new IllegalArgumentException("Ritmo inválido.");state.pace=pace==null?"detailed":pace;}
+    private void setPace(GameState state,String pace){if(pace!=null&&!java.util.Set.of("detailed","run","season").contains(pace))throw new IllegalArgumentException("Ritmo inválido.");state.pace=pace==null?"detailed":pace;}
     private boolean isCurrent(String state) {
         try { return "valorant-career-v1".equals(mapper.readTree(state).path("gameMode").asText()); }
         catch (JsonProcessingException e) { throw new IllegalStateException("Falha ao identificar salvamento", e); }
