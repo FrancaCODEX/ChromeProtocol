@@ -10,6 +10,11 @@ public class GameState {
     public String developmentMode = "standard";
     public boolean igl, pendingCards, retiring, qualifiedMasters1, qualifiedMasters2, qualifiedPlayoffs, qualifiedChampions;
     public int cardChanceBonus, eventVariant;
+    public Set<String> activitySlots = new LinkedHashSet<>();
+    public String seasonGoal;
+    public int goalStart;
+    public boolean goalSettled;
+    public List<GoalAchievement> goals = new ArrayList<>();
     public long careerSeed;
     public List<String> favoriteAgents = new ArrayList<>();
     public Map<String,Integer> investments = new LinkedHashMap<>();
@@ -38,8 +43,9 @@ public class GameState {
     }
     public record Change(String label, String before, String after) {}
     public record Outcome(String title, String narrative, String tone, String date, List<Change> changes, MapStats mapStats) {}
-    public record Season(int year, int age, String organization, int wins, int losses, int titles, int earnings) {}
+    public record Season(int year, int age, String organization, int wins, int losses, int titles, int earnings, Integer overall) {}
     public record Trophy(int year, String name, String organization) {}
+    public record GoalAchievement(int year,String name,boolean completed,int cash) {}
     public record SelectedCard(int year,String id,String name) {}
     public record Award(int year,String title,String detail) {}
     public record MapStats(int year,int phase,String competition,String map,String opponent,String team,boolean won,int score,int opponentScore,int kills,int deaths,int assists,int combatScore,int rounds,double acs,String kd,boolean official) {}

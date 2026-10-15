@@ -2,6 +2,25 @@
 
 Todas as alterações do ChromeProtocol são registradas aqui.
 
+## [1.2.0] — 2026-10-15
+
+### Adicionado
+- Novo menu de carreira com Continuar, Nova carreira, guia e dossiê do jogador salvo; visual escuro, painéis angulares e destaque vermelho.
+- Radar e OVR inicial em tempo real na criação, acompanhando função, origem, IGL e modo Talento da geração; avatar personalizável preservado.
+- Aba Minha rotina: quatro atividades estáveis por período escolhidas entre nove tipos de treino, estudo, idioma, comunidade, família, recuperação e convivência.
+- Uma atividade opcional por fase, sem avançar o calendário; bloqueio durante mapas em andamento, resultados pendentes e escolha de carta, com validação no servidor e persistência contra repetição por reload.
+- Cinco objetivos anuais de carreira, contrato, desempenho, comunicação e comunidade, escolhidos na pré-temporada; avaliação/recompensa automática e única no balanço anual, sem penalidade de habilidade por falha.
+- Central do jogador com agenda pessoal, objetivo e relatório de contrato; histórico de objetivos e OVR/receitas por temporada.
+- Cinco acontecimentos fora do servidor, totalizando quinze modelos, com conversa com coach, redes sociais, projeto social, contato internacional e equilíbrio de agenda.
+- Testes de rotina, metas, recompensas, migração do histórico, radar e fluxo de menu no desktop/celular.
+
+### Alterado
+- Escopo centrado no jogador: evolução, rotina e contratos pessoais; elenco e gestão financeira do clube continuam fora do controle do usuário.
+- Entrada em carreira existente passa pelo menu de retomada; resultados e cartas pendentes continuam abrindo diretamente para preservar a continuidade.
+- Saves 1.0/1.1 continuam compatíveis; OVR de temporadas antigas sem registro aparece como indisponível, sem dados inventados.
+- Referências estudadas: criação/painel visual do ValorantCareer e progressão/mercado/histórico do Rift Career. Conteúdo e código próprios; ValorantSimulator não pôde ser inspecionado por bloqueio de permissão salvo no navegador.
+- Documentação, pacote, Docker e CI atualizados para 1.2.0.
+
 ## [1.1.0] — 2026-10-15
 
 ### Adicionado
