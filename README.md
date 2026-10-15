@@ -2,7 +2,7 @@
 
 **O próximo round é seu.** Modo carreira web de e-sports, começando por Valorant. Você cria um jogador de 15 anos e toma decisões dentro e fora do servidor até os 35 anos: nacionalidade, função, peneiras, contratos, partidas e legado.
 
-Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.4.0**.
+Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.5.0**.
 
 ## O que dá para jogar
 
@@ -176,3 +176,16 @@ O painel automático mostra escolhas à esquerda e histórico anual à direita, 
 O editor agora tem abas **Rosto**, **Cabelo** e **Estilo**: três rostos, seis peles, nove cabelos, oito cores de cabelo, cinco barbas, cinco cores de olhos, quatro estilos de óculos, três acessórios de cabeça, três roupas, sete cores de uniforme e três estampas de jersey. Óculos e headset podem ser combinados. Cabelos, barbas, acessórios e roupas têm miniaturas. Editar durante a carreira é cosmético e mantém atributos/temporada/contratos. Os sete campos originais continuam aceitos e o servidor traduz óculos/headset antigos para os novos campos; opções inválidas são rejeitadas. As ilustrações SVG são próprias e locais.
 
 As capturas enviadas pelo proprietário e [Rift Career](https://riftscore.net/valorant/) orientaram o fluxo compacto de escolhas e histórico. A captura de ValorantCareer também foi usada como referência visual; o site não retornou conteúdo na ferramenta de consulta nesta revisão. Não foi copiado código de nenhum dos sites.
+
+
+## Retrato Estúdio, troféus e contratos (1.5)
+
+Novos jogadores começam com o retrato **Estúdio**, baseado em DiceBear/Avataaars, renderizado localmente. No editor, Rosto → Estilo do retrato permite alternar entre Estúdio e Clássico; saves sem esse campo mantêm o Clássico. Cabelo, pele, barba, olhos, óculos, acessórios e roupas continuam editáveis. As opções equivalentes de cabelo/rosto são interpretações de cada estilo. Óculos e headset podem ser combinados. Editar o visual preserva atributos, contratos e temporadas.
+
+O bundle já está incluído no projeto: executar Java no IntelliJ, Maven ou Docker não exige Node nem acesso a uma API de avatar. Para desenvolver o renderer: `npm ci` e `npm run build:avatar`. Dependências fixadas: `@dicebear/core` e `@dicebear/avataaars` 9.4.2. Avataaars é um design de Pablo Stanley ([fonte](https://avataaars.com/)); o código DiceBear usa licença MIT. Licenças completas em `src/main/resources/static/vendor/licenses/`. O enquadramento, as estampas e os acessórios adicionais são adaptações do jogo.
+
+As nove imagens enviadas pelo proprietário em `vct.zip` estão em `static/trophies/`: Champions, Masters, VCT Americas, EMEA, Pacific, China e Challengers Brazil, Korea e Spain. São exibidas conforme o nome da competição, com ampliação por clique; circuitos sem imagem correspondente preservam o SVG genérico. A galeria de referência mostra todas as nove imagens, sem conceder conquistas. Apenas vitórias elegíveis aparecem na coleção pessoal. O calendário e as vagas continuam simplificados; a presença de um troféu na galeria não acrescenta uma competição ao motor. As imagens são referências fornecidas pelo usuário, sem alegação de autoria ou afiliação oficial.
+
+Quando um contrato termina, a próxima janela de janeiro oferece **Renovar com [clube]**, além das novas propostas e da opção de agente livre. A renovação é garantida por mais uma temporada e seu salário nunca fica abaixo do vínculo anterior. Preserva o clube e melhora a química, sem multa. Aceitar outra proposta ou seguir como agente livre descarta a renovação; rescindir não gera esse direito. O vínculo expirado é guardado a partir desta versão; saves antigos que já perderam esses dados não recebem termos inventados.
+
+A partir de **80 de OVR**, toda proposta (inclusive renovação) é de **Titular**, em qualquer equipe. Um reserva que atinge esse patamar é promovido automaticamente, preservando salário e prazo. Saves anteriores são reconciliados ao carregar. Um mapa/série já iniciado é concluído com a posição anterior para preservar o registro de scrim; a promoção passa a valer em seguida. O feedback da decisão mostra a mudança de posição. O limiar é uma regra fictícia do jogo, centralizada em `Catalog.STARTER_OVR`.

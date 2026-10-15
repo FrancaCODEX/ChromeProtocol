@@ -1,7 +1,15 @@
 {
   "name": "clutch-career-browser-checks",
   "private": true,
-  "version": "1.4.0",
-  "scripts": { "test:browser": "node scripts/test-browser.mjs" },
-  "devDependencies": { "playwright": "1.62.1" }
+  "version": "1.5.0",
+  "scripts": {
+    "test:browser": "node scripts/test-browser.mjs",
+    "build:avatar": "esbuild scripts/avatar-studio.js --bundle --format=esm --minify --outfile=src/main/resources/static/vendor/avatar-studio.js"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1",
+    "@dicebear/avataaars": "9.4.2",
+    "@dicebear/core": "9.4.2",
+    "esbuild": "0.28.2"
+  }
 }

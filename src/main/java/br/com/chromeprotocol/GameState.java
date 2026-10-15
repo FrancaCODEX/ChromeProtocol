@@ -49,6 +49,7 @@ public class GameState {
     public String ending;
     public Map<String,Integer> attributes = new LinkedHashMap<>();
     public Contract contract;
+    public Contract expiredContract;
     public Match match;
     public Outcome outcome;
     public List<Season> seasons = new ArrayList<>();

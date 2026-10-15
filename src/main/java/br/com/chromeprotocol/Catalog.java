@@ -137,6 +137,13 @@ public final class Catalog {
     public static int overall(GameState s) { return (int)Math.round(s.attributes.values().stream().mapToInt(Integer::intValue).average().orElse(0)); }
     public static String circuit(GameState s) { int tier=s.contract==null?1:s.contract.tier();return tier==3?"VCT "+Calendar.regionName(Calendar.region(s)):tier==2||Calendar.academy(s)?Calendar.challengers(s):"Premier / Base"; }
     public static String team(GameState s) { return s.contract==null?"Mix "+country(s.nationality).name():s.contract.name(); }
+    public static final int STARTER_OVR = 80;
+    /** Reconcile older saves and promote on permanent growth without changing pay or term. */
+    public static void ensureStarter(GameState s) {
+        var old=s.contract;
+        if(old!=null && s.match==null && s.currentSeries==null && overall(s)>=STARTER_OVR && old.position().equals("Reserva"))
+            s.contract=new GameState.Contract(old.orgId(),old.name(),old.tier(),old.salary(),old.endYear(),"Titular",old.pressure());
+    }
     public static List<Offer> offers(GameState s) {
         String region=country(s.nationality).region();
         int eligible=s.age>=18 && s.reputation>=40 && overall(s)>=45 ? 3 : s.age>=16 && s.reputation>=14 ? 2 : 1;
@@ -147,11 +154,17 @@ public final class Catalog {
         Collections.rotate(pool,-Math.floorMod(s.year-2026,pool.size()));
         var result=new ArrayList<Offer>();
         for(int i=0;i<3;i++) {
-            Organization o=pool.get(i%pool.size()); boolean reserve=i==2;
+            Organization o=pool.get(i%pool.size()); boolean reserve=i==2 && overall(s)<STARTER_OVR;
             int salary=o.baseSalary()+s.reputation*22+(reserve?o.baseSalary()/3:0);
             int years=i==1?2:1;
             result.add(new Offer("offer-"+i,o.id(),o.name(),o.tier(),salary,years,reserve?"Reserva":"Titular",o.tier()*12+(reserve?5:0),
                 (o.region().equals(region)?"Na sua região":"Mudança de região")+" · "+(reserve?"Mais renda; scrims e menor exposição":"Vaga no quinteto e partidas do circuito")));
+        }
+        var old=s.expiredContract;
+        if(old!=null && old.endYear()==s.year-1 && s.contract==null) {
+            String position=overall(s)>=STARTER_OVR?"Titular":old.position();
+            int salary=Math.max(old.salary(),ORGS.stream().filter(o->o.id().equals(old.orgId())).mapToInt(Organization::baseSalary).findFirst().orElse(0)+s.reputation*22);
+            result.add(0,new Offer("renew",old.orgId(),old.name(),old.tier(),salary,1,position,old.pressure(),"Renovação · mais uma temporada com o mesmo clube · sem multa"));
         }
         return List.copyOf(result);
     }
