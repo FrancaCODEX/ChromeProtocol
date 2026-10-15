@@ -1,8 +1,11 @@
+import { DEFAULT_APPEARANCE, normalizeAppearance, renderPortrait, mountCustomizer, randomAppearance } from './appearance.js';
+
 'use strict';
 const $ = id => document.getElementById(id);
 const originNames = {street:'Cria das ruas',corpo:'Ex-corporativo',nomad:'Nômade'};
 const specialtyNames = {netrunner:'Netrunner',solo:'Combatente',ghost:'Infiltrador'};
 let game = null, csrf = null, busy = false, restarting = false, activeTab = 'mission', pending = null, toastTimer;
+let creatorAppearance = {...DEFAULT_APPEARANCE}, editorAppearance = null, creationStep = 'identity';
 const credits = value => `₡ ${new Intl.NumberFormat('pt-BR').format(value)}`;
 function show(id, visible = true) { $(id).classList.toggle('hidden', !visible); }
 function text(id, value) { $(id).textContent = value; }
@@ -76,6 +79,7 @@ function render() {
   text('day-label', `DIA ${String(s.day).padStart(2,'0')} / NOVA AURORA, 2089`);
   text('welcome', s.ended ? 'Toda lenda deixa uma marca.' : 'Seu próximo movimento.');
   text('chapter-label', s.ended ? 'CARREIRA CONCLUÍDA' : `CONTRATO ${String(s.missionIndex+1).padStart(2,'0')} / ${game.totalMissions}`);
+  renderPortrait($('profile-portrait'), s.appearance, `Retrato de ${s.name}`);
   text('profile-name', s.name); text('profile-origin', `${originNames[s.origin]} / ${specialtyNames[s.specialty]}`);
   text('profile-level', `NÍVEL ${s.level}`); text('xp-label', `${s.xp} / 100 XP`);
   text('points-label', `${s.skillPoints} PT${s.skillPoints===1?'':'S'}`); $('xp-bar').value = s.xp;
@@ -166,16 +170,72 @@ function openConfirmation(action, title, description, details, notice, buttonLab
   pending = action; text('confirm-title',title); text('confirm-description',description); text('confirm-details',details);
   $('choice-dialog').querySelector('.micro-copy').textContent = notice; text('confirm-choice',buttonLabel); $('choice-dialog').showModal();
 }
+function updateCreatorPreview() {
+  renderPortrait($('creator-portrait'), creatorAppearance, 'Prévia do seu personagem');
+  text('creator-name-preview', $('character-name').value.trim() || 'SEM REGISTRO');
+  const data = new FormData($('character-form'));
+  text('creator-build-preview', `${originNames[data.get('origin')]} / ${specialtyNames[data.get('specialty')]}`);
+}
+function mountCreator() {
+  mountCustomizer($('creation-customizer'), creatorAppearance, appearance => {
+    creatorAppearance = appearance; updateCreatorPreview();
+  }, 'create');
+  updateCreatorPreview();
+}
+function validName() {
+  const input = $('character-name');
+  input.setCustomValidity(input.value.trim() ? '' : 'Digite seu nome ou codinome.');
+  return input.reportValidity();
+}
+function selectCreationStep(step) {
+  if (step === 'history' && !validName()) return;
+  creationStep = step;
+  show('identity-step', step === 'identity'); show('history-step', step === 'history');
+  show('identity-next', step === 'identity'); show('creation-submit', step === 'history');
+  text('creator-step-note', step === 'identity' ? 'Seu visual não altera os atributos do personagem.' : 'Sua carreira é salva automaticamente neste navegador e servidor.');
+  document.querySelectorAll('[data-step]').forEach(button => {
+    const active = button.dataset.step === step; button.classList.toggle('active', active);
+    if(active) button.setAttribute('aria-current','step'); else button.removeAttribute('aria-current');
+  });
+}
 function createScreen(restart = false) {
   restarting = restart;
-  text('creation-notice',restart?'Ao confirmar, esta história substituirá sua carreira atual. Sua carreira continua salva até você concluir este formulário.':'Sua origem é o começo. O resto está nas suas mãos.');
-  $('character-form').querySelector('[type=submit]').textContent = restart?'Substituir carreira e começar ↗':'Entrar em Nova Aurora ↗';
-  screen('creation'); $('character-name').focus(); window.scrollTo({top:0,behavior:'instant'});
+  creatorAppearance = {...DEFAULT_APPEARANCE}; $('character-form').reset();
+  text('creation-notice', restart ? 'Uma nova carreira substitui a atual somente depois de confirmar. Para mudar apenas a aparência, use “Editar visual” no seu perfil.' : 'O rosto é seu. A reputação, você conquista.');
+  text('creation-submit', restart ? 'Substituir carreira e começar ↗' : 'Entrar em Nova Aurora ↗');
+  screen('creation'); selectCreationStep('identity'); mountCreator(); $('character-name').focus(); window.scrollTo({top:0,behavior:'instant'});
 }
+function mountEditor() {
+  mountCustomizer($('editor-customizer'), editorAppearance, appearance => {
+    editorAppearance = appearance; renderPortrait($('editor-portrait'), editorAppearance, 'Prévia do novo visual');
+  }, 'edit');
+  renderPortrait($('editor-portrait'), editorAppearance, 'Prévia do novo visual');
+}
+$('edit-appearance').addEventListener('click', () => {
+  if(busy || !game) return;
+  editorAppearance = normalizeAppearance(game.character.appearance); mountEditor(); $('appearance-dialog').showModal();
+});
+$('randomize-appearance').addEventListener('click', () => { creatorAppearance = randomAppearance(); mountCreator(); });
+$('randomize-editor').addEventListener('click', () => { editorAppearance = randomAppearance(); mountEditor(); });
+$('save-appearance').addEventListener('click', async () => {
+  if(busy || !game || !editorAppearance) return;
+  setBusy(true);
+  try {
+    game = await request('game/appearance', {appearance:editorAppearance, revision:game.character.revision});
+    $('appearance-dialog').close(); toast('Visual atualizado. Sua história continua.');
+  } catch(error) {
+    toast(error.message, true);
+    try { const latest = await request('game'); if(latest.started)game=latest.game; } catch { /* Keep the editor open for retry. */ }
+  } finally { setBusy(false); render(); }
+});
+$('identity-next').addEventListener('click', () => selectCreationStep('history'));
+document.querySelectorAll('[data-step]').forEach(button => button.addEventListener('click', () => selectCreationStep(button.dataset.step)));
+$('character-form').addEventListener('change', updateCreatorPreview);
 $('character-form').addEventListener('submit',async event => {
   event.preventDefault(); if (busy) return;
+  if (creationStep === 'identity') { selectCreationStep('history'); return; }
   const data = new FormData(event.currentTarget);
-  const body = {name:data.get('name').trim(),origin:data.get('origin'),specialty:data.get('specialty')};
+  const body = {name:data.get('name').trim(),origin:data.get('origin'),specialty:data.get('specialty'), appearance:creatorAppearance};
   if (!body.name) { $('character-name').setCustomValidity('Digite seu nome ou codinome.'); $('character-name').reportValidity(); return; }
   if (restarting) body.revision = game.character.revision;
   setBusy(true);
@@ -183,7 +243,7 @@ $('character-form').addEventListener('submit',async event => {
   catch (error) { toast(error.message,true); }
   finally { setBusy(false); if (game && !$('dashboard').classList.contains('hidden')) render(); }
 });
-$('character-name').addEventListener('input',()=> $('character-name').setCustomValidity(''));
+$('character-name').addEventListener('input',()=> { $('character-name').setCustomValidity(''); updateCreatorPreview(); });
 $('start-button').addEventListener('click',()=>createScreen());
 $('creation-back').addEventListener('click',()=>{screen(game?'dashboard':'landing'); if(game)render();});
 $('retry-button').addEventListener('click',init);
@@ -194,7 +254,7 @@ document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener(
 document.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',()=>act(button.dataset.action)));
 document.querySelectorAll('.new-career-button').forEach(button=>button.addEventListener('click',()=>createScreen(true)));
 $('export-button').addEventListener('click',()=>{
-  const blob = new Blob([JSON.stringify({title:'ChromeProtocol — dossiê',version:'0.1.0',exportedAt:new Date().toISOString(),character:game.character},null,2)],{type:'application/json'});
+  const blob = new Blob([JSON.stringify({title:'ChromeProtocol — dossiê',version:'0.2.0',exportedAt:new Date().toISOString(),character:game.character},null,2)],{type:'application/json'});
   const url = URL.createObjectURL(blob); const link = element('a'); link.href=url; link.download='chromeprotocol-dossie.json'; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 init();

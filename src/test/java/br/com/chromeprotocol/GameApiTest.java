@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class GameApiTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
+    @Autowired CareerRepository repository;
     static final String NEW="{\"name\":\"Nova\",\"origin\":\"street\",\"specialty\":\"netrunner\"}";
     private Cookie create() throws Exception {
         MvcResult result=mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(NEW))
@@ -77,4 +78,35 @@ class GameApiTest {
             .content("{\"name\":\"\",\"origin\":\"street\",\"specialty\":\"solo\"}"))
             .andExpect(status().isBadRequest());
     }
+    @Test void appearancePersistsAndChangesWithoutResettingStory() throws Exception {
+        Cookie cookie=create();
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json")
+            .content("{\"type\":\"work\",\"target\":\"\",\"revision\":0}"))
+            .andExpect(status().isOk());
+        mvc.perform(post("/api/game/appearance").cookie(cookie).with(csrf()).contentType("application/json")
+            .content("{\"revision\":1,\"appearance\":{\"face\":\"soft\",\"skin\":\"ebony\",\"hair\":\"braids\",\"hairColor\":\"cyan\",\"eyes\":\"visor\",\"outfit\":\"nomad\",\"accent\":\"magenta\"},\"money\":99999}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.character.appearance.hair").value("braids"))
+            .andExpect(jsonPath("$.character.money").value(680)).andExpect(jsonPath("$.character.day").value(2))
+            .andExpect(jsonPath("$.character.revision").value(2));
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.appearance.accent").value("magenta"));
+        mvc.perform(post("/api/game/appearance").cookie(cookie).with(csrf()).contentType("application/json")
+            .content("{\"revision\":1,\"appearance\":{}}"))
+            .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/game/appearance").cookie(cookie).contentType("application/json")
+            .content("{\"revision\":2,\"appearance\":{}}"))
+            .andExpect(status().isForbidden());
+    }
+    @Test void malformedAppearanceRejectedBeforeSaving() throws Exception {
+        mvc.perform(post("/api/game").with(csrf()).contentType("application/json")
+            .content("{\"name\":\"Nova\",\"origin\":\"street\",\"specialty\":\"solo\",\"appearance\":{\"hair\":\"<script>\"}}"))
+            .andExpect(status().isBadRequest());
+    }
+    @Test void legacyJsonWithoutAppearanceRemainsPlayable() throws Exception {
+        java.util.UUID id=java.util.UUID.randomUUID();
+        repository.saveAndFlush(new Career(id, "{\"name\":\"Legacy\",\"origin\":\"street\",\"specialty\":\"solo\",\"money\":777,\"attributes\":{\"body\":4,\"reflex\":3,\"tech\":3,\"intelligence\":3,\"cool\":4},\"factions\":{\"helix\":0,\"ghosts\":0,\"district\":5}}"));
+        mvc.perform(get("/api/game").cookie(new Cookie("CP_CAREER",id.toString())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.game.character.money").value(777))
+            .andExpect(jsonPath("$.game.character.appearance.hair").value("undercut"));
+    }
+
 }

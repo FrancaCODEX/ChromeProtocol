@@ -5,6 +5,7 @@ import java.util.*;
 /** Serializable state owned by the server. The browser only submits action IDs. */
 public class GameState {
     public String name, origin, specialty;
+    public Appearance appearance = Appearance.defaults();
     public int day = 1, money, health = 100, energy = 100, heat, reputation, debt;
     public int level = 1, xp, skillPoints, missionIndex, revision;
     public boolean ended;

@@ -3,6 +3,7 @@ set -eu
 cd "$(dirname "$0")/.."
 mkdir -p target/domain
 java -m jdk.compiler/com.sun.tools.javac.Main -encoding UTF-8 -d target/domain \
+  src/main/java/br/com/chromeprotocol/Appearance.java \
   src/main/java/br/com/chromeprotocol/GameState.java \
   src/main/java/br/com/chromeprotocol/Catalog.java \
   src/main/java/br/com/chromeprotocol/GameEngine.java \

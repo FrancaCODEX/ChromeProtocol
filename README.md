@@ -2,9 +2,12 @@
 
 **Seu futuro tem um preço.** RPG web narrativo de vida e carreira em Nova Aurora, uma cidade cyberpunk original. Jogue por escolhas: aceite contratos, ganhe créditos, instale implantes e decida com quem ficar.
 
-## Primeira versão — 0.1.0
+## Versão atual — 0.2.0
 
-- Criação de personagem: três origens e três especialidades.
+- Criação em duas etapas: identidade visual e história.
+- Retrato SVG com prévia ao vivo: três rostos, seis tons de pele, cinco cortes, seis cores de cabelo, três opções faciais, três roupas e quatro cores neon.
+- Gerador de visual aleatório e edição de aparência durante a carreira, sem alterar recursos ou escolhas.
+- Três origens e três especialidades.
 - Cinco atributos, experiência, níveis e pontos de habilidade.
 - Dez contratos autorais com três escolhas cada, testes de atributo e consequências persistentes.
 - Relações com Helix Systems, Fantasmas e Distrito Livre.
@@ -53,18 +56,21 @@ $env:PORT = "8081"
 
 ## Como jogar
 
-1. Crie um codinome, escolha a origem e a especialidade.
-2. Leia o contrato e confira as chances, custos e requisitos das escolhas.
-3. Confirme a decisão: o contrato avança e o resultado é salvo.
-4. Use o distrito para recuperar vida/energia, ganhar dinheiro e treinar.
-5. Instale implantes na clínica para aumentar atributos e abrir rotas.
-6. Consulte o dossiê para distribuir pontos de nível e acompanhar consequências.
+1. Crie um codinome e personalize seu retrato na etapa Identidade.
+2. Avance para História e escolha a origem e a especialidade.
+3. Leia o contrato e confira as chances, custos e requisitos das escolhas.
+4. Confirme a decisão: o contrato avança e o resultado é salvo.
+5. Use o distrito para recuperar vida/energia, ganhar dinheiro e treinar.
+6. Instale implantes na clínica para aumentar atributos e abrir rotas.
+7. Consulte o dossiê para distribuir pontos de nível e acompanhar consequências.
 
 Ações de missão, descanso, trabalho e treino avançam um dia. Compra de implante, distribuição de pontos e pagamento de dívida não avançam o relógio. Aluguel de 120 créditos nos dias 8, 15, 22 etc. Valores não pagos viram dívida. Vida zero gera resgate de 200 créditos e recuperação para 40 de vida, sem encerrar a história.
 
 Chance de sucesso: `55 + atributo efetivo × 7 − dificuldade + bônus de memória − procurado / 10`, limitada a 25–95%. Ações sem teste têm 100%. Decisões prévias podem adicionar 8 pontos percentuais. A interface mostra a mesma chance usada pelo motor.
 
 ## Salvamento
+
+A aparência é salva com a carreira. Saves da versão 0.1.0 recebem um visual padrão, sem perder a história. “Editar visual” no perfil permite personalizar esse visual gratuitamente, sem avançar o dia; fechar o editor sem salvar descarta as alterações. O implante facial do editor é apenas cosmético, separado dos implantes comprados na clínica.
 
 O banco H2 fica em `./data` por padrão. Um cookie `CP_CAREER` aleatório, HttpOnly e SameSite Strict vincula o navegador à carreira. Atualizar a página ou reiniciar o servidor mantém o progresso se o cookie e o banco forem preservados. Outro navegador inicia uma carreira independente.
 
@@ -81,6 +87,9 @@ Java 17 · Spring Boot 3.5.16 · Spring Web · Spring Security · Spring Data JP
 | `Catalog.java` | Missões, escolhas, efeitos, origens e implantes |
 | `GameEngine.java` | Regras, probabilidades, economia e finais |
 | `GameState.java` | Estado serializável da carreira |
+| `Appearance.java` | Opções cosméticas validadas e valores padrão |
+| `static/appearance.js` | Retrato SVG em camadas e editor de aparência |
+| `static/cyberpunk.css` | Tema visual, personalização e layout responsivo |
 | `CareerService.java` | Persistência transacional e bloqueio por carreira |
 | `GameController.java` | API e cookie de identidade |
 | `WebSecurity.java` | CSRF e política de conteúdo |

@@ -12,7 +12,7 @@ import java.util.*;
 public class GameController {
     private final CareerService service;
     public GameController(CareerService service) { this.service = service; }
-    public record NewCareer(String name, String origin, String specialty, Integer revision) {}
+    public record NewCareer(String name, String origin, String specialty, Integer revision, Appearance appearance) {}
     @GetMapping("/session")
     public Map<String, String> csrf(CsrfToken token) { return Map.of("token", token.getToken(), "header", token.getHeaderName()); }
     @GetMapping("/game")
@@ -24,7 +24,7 @@ public class GameController {
     public ResponseEntity<GameEngine.View> create(@RequestBody NewCareer body,
              @CookieValue(name = "CP_CAREER", required = false) String cookie, HttpServletRequest request) {
         if (service.read(id(cookie)) != null) throw new IllegalArgumentException("Uma carreira já existe. Use a opção de nova carreira.");
-        CareerService.Created created = service.create(body.name(), body.origin(), body.specialty());
+        CareerService.Created created = service.create(body.name(), body.origin(), body.specialty(), body.appearance());
         ResponseCookie careerCookie = ResponseCookie.from("CP_CAREER", created.id().toString()).httpOnly(true)
             .secure(request.isSecure()).sameSite("Strict").path("/").maxAge(Duration.ofDays(365)).build();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, careerCookie.toString()).body(created.game());
@@ -36,7 +36,13 @@ public class GameController {
     @PostMapping("/game/restart")
     public GameEngine.View restart(@CookieValue(name = "CP_CAREER", required = false) String cookie, @RequestBody NewCareer body) {
         if (body.revision() == null) throw new IllegalArgumentException("Atualize a carreira antes de reiniciar.");
-        return service.restart(id(cookie), body.revision(), body.name(), body.origin(), body.specialty());
+        return service.restart(id(cookie), body.revision(), body.name(), body.origin(), body.specialty(), body.appearance());
+    }
+    public record AppearanceChange(Appearance appearance, Integer revision) {}
+    @PostMapping("/game/appearance")
+    public GameEngine.View customize(@CookieValue(name = "CP_CAREER", required = false) String cookie, @RequestBody AppearanceChange body) {
+        if (body.revision() == null) throw new IllegalArgumentException("Atualize a carreira antes de alterar o visual.");
+        return service.customize(id(cookie), body.revision(), body.appearance());
     }
     private UUID id(String value) {
         try { return value == null ? null : UUID.fromString(value); }

@@ -16,12 +16,16 @@ public final class GameEngine {
                        Map<String, String> attributes, Map<String, String> factions, int totalMissions) {}
 
     public GameState create(String name, String origin, String specialty) {
+        return create(name, origin, specialty, Appearance.defaults());
+    }
+    public GameState create(String name, String origin, String specialty, Appearance appearance) {
         require(name != null && !name.isBlank() && name.strip().length() <= 24, "Use um nome de 1 a 24 caracteres.");
         require(name.strip().codePoints().noneMatch(Character::isISOControl), "O nome contém caracteres inválidos.");
         require(Catalog.ORIGINS.containsKey(origin), "Escolha uma origem válida.");
         require(Catalog.SPECIALTIES.containsKey(specialty), "Escolha uma especialidade válida.");
         GameState s = new GameState();
         s.name = name.strip(); s.origin = origin; s.specialty = specialty;
+        s.appearance = appearance == null ? Appearance.defaults() : appearance;
         Catalog.ATTRIBUTES.keySet().forEach(key -> s.attributes.put(key, 3));
         Catalog.FACTIONS.keySet().forEach(key -> s.factions.put(key, 0));
         s.money = switch (origin) { case "corpo" -> 800; case "nomad" -> 450; default -> 500; };
@@ -32,7 +36,14 @@ public final class GameEngine {
         log(s, "Bem-vindo a Nova Aurora", "Mara tem um primeiro contrato para você. O aluguel custa 120 créditos a cada sete dias. A cidade não espera.", "info");
         return s;
     }
+    public void customize(GameState s, Appearance appearance, int revision) {
+        require(revision == s.revision, "Sua carreira mudou em outra aba. Atualize antes de continuar.");
+        require(appearance != null, "Escolha uma aparência válida.");
+        s.appearance = appearance;
+        s.revision++;
+    }
     public View view(GameState s) {
+        if (s.appearance == null) s.appearance = Appearance.defaults();
         MissionView mission = null;
         if (!s.ended) {
             Catalog.Mission m = Catalog.MISSIONS.get(s.missionIndex);

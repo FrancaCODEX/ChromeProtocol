@@ -2,6 +2,23 @@
 
 Todas as alterações do ChromeProtocol são registradas aqui.
 
+## [0.2.0] — 2026-10-15
+
+### Adicionado
+- Personalização antes de iniciar: rosto, pele, corte e cor de cabelo, implante facial, vestuário e assinatura neon.
+- Retrato vetorial em camadas com prévia ao vivo, codinome e opção de gerar outro visual.
+- Criação em duas etapas: identidade e história; origem e especialidade mantêm os efeitos de jogo.
+- Aparência persistida no servidor e retrato personalizado no perfil da carreira.
+- Editor de visual para carreiras existentes, com salvamento por revisão e sem alterar história, atributos, créditos ou calendário.
+- Compatibilidade com saves antigos que não possuem aparência, usando valores padrão.
+- Testes de personalização, persistência, cancelamento, regras intactas e criação responsiva.
+
+### Alterado
+- Identidade visual cyberpunk com paleta lima/ciano, detalhes magenta, painéis de HUD e botões de alto contraste.
+- Tela inicial, ilustração noturna de Nova Aurora, favicon, cartões e navegação.
+- Layout da criação, retrato e editor adaptados a celular e teclado, com movimento reduzido respeitado.
+- Documentação, pacote e imagens Docker atualizados para 0.2.0.
+
 ## [0.1.0] — 2026-10-14
 
 ### Adicionado
