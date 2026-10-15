@@ -1,4 +1,4 @@
-name: Verify ChromeProtocol
+name: Verify Clutch Career
 on:
   push:
     branches: [main, 'feat/**']
@@ -30,7 +30,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Start game and verify browser
         run: |
-          java -jar target/chromeprotocol-0.2.0.jar > target/server.log 2>&1 &
+          java -jar target/chromeprotocol-1.0.0.jar > target/server.log 2>&1 &
           ready=false
           for attempt in $(seq 1 45); do
             if curl --fail --silent http://localhost:8080/api/game > /dev/null; then

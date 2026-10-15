@@ -8,7 +8,7 @@ RUN mvn -B verify
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 RUN groupadd --system chrome && useradd --system --gid chrome chrome && mkdir data && chown chrome:chrome data
-COPY --from=build /build/target/chromeprotocol-0.2.0.jar app.jar
+COPY --from=build /build/target/chromeprotocol-1.0.0.jar app.jar
 USER chrome
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
