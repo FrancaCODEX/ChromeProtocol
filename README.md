@@ -2,7 +2,7 @@
 
 **O próximo round é seu.** Modo carreira web de e-sports, começando por Valorant. Você cria um jogador de 15 anos e toma decisões dentro e fora do servidor até os 35 anos: nacionalidade, função, peneiras, contratos, partidas e legado.
 
-Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.5.0**.
+Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.6.0**.
 
 ## O que dá para jogar
 
@@ -15,7 +15,7 @@ Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O 
 - Ritmos detalhado e Run, com a mesma progressão: blocos de até quatro séries, dilemas entre os jogos e escolhas de contrato/cartas sempre manuais.
 - Resultado imediato persistente após cada decisão, com narrativa, placar e valores antes/depois. O próximo evento só é liberado ao continuar.
 - Mercado com propostas distintas de salário, duração e vaga de titular/reserva.
-- 48 organizações reais do VCT, com logos locais da fonte oficial, mais equipes brasileiras de desenvolvimento.
+- 48 organizações reais do VCT, com logos locais da fonte oficial, mais equipes de desenvolvimento nas quatro regiões.
 - Contratos de uma ou duas temporadas, renegociação e liberação por dois salários.
 - Mira, leitura de jogo, comunicação, disciplina, controle emocional, forma, energia, química, estresse, reputação e seguidores.
 - Sala de troféus, prêmios individuais, kills/mortes/assistências por mapa, KD, ACS, histórico anual e diário de decisões.
@@ -65,18 +65,22 @@ O volume `chromeprotocol-data` mantém o banco. `docker compose down` preserva o
 | Masters London | Junho | Elite classificada no Stage 1 |
 | Acontecimento inesperado | Junho–Julho | Vida, equipe, mídia, patrocínio e oportunidades |
 | Stage 2 / Challengers Playoffs / Premier Split 3 | Julho–Agosto | Disputa da vaga nos playoffs |
-| Playoffs regionais / Série de Acesso | Agosto–Setembro | Rota para Champions conforme equipe |
+| Playoffs regionais / VCT Ascension | Agosto–Setembro | Rota para Champions conforme equipe |
 | Champions Shanghai | Setembro–Outubro | Equipes classificadas |
 | Prêmios individuais | Novembro | Reconhecimentos calculados pelos números |
 | Balanço e carta permanente | Dezembro | Escolher evolução e depois 1 de 3 cartas |
 
-Cada escolha abre o resultado imediatamente. Recarregar mantém o resultado e não refaz o sorteio. Vencer pelo menos dois dos três rounds-chave vence o mapa. Reservas disputam scrims com números separados, sem vitórias oficiais, classificação ou troféus. Nesta versão, só equipes de elite acessam os playoffs do VCT; promoção/Ascension a partir de Challengers e Academy ainda não é simulada. Sem vaga, você recebe um evento contextual em vez de disputar o campeonato.
+Cada escolha abre o resultado imediatamente. Recarregar mantém o resultado e não refaz o sorteio. Vencer pelo menos dois dos três rounds-chave vence o mapa. Reservas disputam scrims com números separados, sem vitórias oficiais, classificação ou troféus. Equipes independentes de base que vencem pelo menos 6 das 10 séries do Stage 2 disputam o Ascension regional. O título garante acesso ao VCT da mesma região na temporada seguinte, com atualização do contrato e salário. Academy segue a rota de convite ao elenco principal, sem duplicar a franquia. Sem vaga, você recebe um evento contextual em vez de disputar o campeonato.
 
-A elite tem Kickoff com três vitórias ou três derrotas, grupos regionais de seis equipes com cinco séries, classificação dos quatro primeiros, trajetória em chave superior/inferior e finais MD5. Masters inclui suíço (duas vitórias/derrotas) com entrada direta do campeão regional; Champions inclui grupos e playoffs. Tabelas do grupo do jogador são determinísticas e só mostram resultados das rodadas já concluídas. Chaves adversárias, desempates e vagas são simplificados: não há pontuação de circuito, cross-region seeding ou todos os critérios oficiais. O calendário da base/Premier é próprio do jogo: 26 séries (8 + 8 + 10), com campanha campeã ao ganhar pelo menos 75% da etapa e a última série. Esse número não é um formato oficial do VCB. A elite não tem total anual fixo: a campanha invicta no modelo soma 33 séries; suíço e chaves inferiores acrescentam confrontos, e eliminações reduzem o total. A estimativa de 34–42 não é tratada como regra universal. O calendário regional usa Americas, EMEA, Pacific e CN. VCB identifica Gamers Club Challengers Brazil; outras ligas são simplificadas por região.
+A elite tem Kickoff com três vitórias ou três derrotas, grupos regionais de seis equipes com cinco séries, classificação dos quatro primeiros, trajetória em chave superior/inferior e finais MD5. Masters inclui suíço (duas vitórias/derrotas) com entrada direta do campeão regional; Champions inclui grupos e playoffs. Tabelas do grupo do jogador são determinísticas e só mostram resultados das rodadas já concluídas. Chaves adversárias, desempates e vagas são simplificados: não há pontuação de circuito, cross-region seeding ou todos os critérios oficiais. O calendário da base/Premier é próprio do jogo: 26 séries (8 + 8 + 10), além do Ascension dos classificados, com campanha campeã ao ganhar pelo menos 75% da etapa e a última série. Esse número não é um formato oficial do VCB. A elite não tem total anual fixo: a campanha invicta no modelo soma 33 séries; suíço e chaves inferiores acrescentam confrontos, e eliminações reduzem o total. A estimativa de 34–42 não é tratada como regra universal. O calendário regional usa Americas, EMEA, Pacific e CN. VCB identifica Gamers Club Challengers Brazil; outras ligas são simplificadas por região.
 
 Os salários são creditados pelos meses concluídos, junto das despesas: R$ 50/mês antes dos 18 anos e R$ 300/mês depois, limitadas ao saldo. O calendário avança entre fases; os três rounds de um mapa pertencem à mesma fase. Escolhas sem teste são garantidas. As demais mostram a chance exata usada no servidor, calculada pelos atributos, condição do jogador, química e progresso do mapa.
 
-As oportunidades de elite exigem 18 anos, reputação 40 e overall 45. Challengers exige 16 anos e reputação 14. Esses limites são regras próprias desta simulação. Nacionalidade prioriza a região do mercado; as propostas locais têm prioridade e rodam entre organizações a cada ano.
+As oportunidades de elite exigem reputação 40 e OVR 45; Challengers exige reputação 14. Não há bloqueio aos 18 anos para franquias ou Champions nesta simulação. O mercado seleciona propostas de Americas, EMEA, Pacific e China conforme o nível disponível, sem limitar a nacionalidade. As academias internacionais e equipes Contenders de desenvolvimento são adaptações fictícias para a progressão do jogo.
+
+Ao expirar o contrato, a renovação aparece uma única vez, com aumento mínimo de 10% e valorização por OVR, reputação, títulos e divisão. O clube atual não reaparece como contratação externa. A partir de 80 OVR, o jogador é titular e só recebe propostas de titular. Nas academias, OVR 55 e reputação 25 liberam convite ao elenco principal, inclusive durante contrato, sem multa e com aumento mínimo de 20%.
+
+O editor permite criar personagem masculino ou feminino e alterar o visual durante a carreira. O novo retrato Arena é vetorial e local, com rosto, cabelos, cores, roupas e acessórios independentes. Retratos Estúdio antigos migram para Arena; o estilo Clássico continua disponível. A interface usa um novo tema editorial claro, painéis de perfil escuros, controles arredondados e layouts para computador e celular.
 
 ## Salvamento e campanhas antigas
 
@@ -180,9 +184,9 @@ As capturas enviadas pelo proprietário e [Rift Career](https://riftscore.net/va
 
 ## Retrato Estúdio, troféus e contratos (1.5)
 
-Novos jogadores começam com o retrato **Estúdio**, baseado em DiceBear/Avataaars, renderizado localmente. No editor, Rosto → Estilo do retrato permite alternar entre Estúdio e Clássico; saves sem esse campo mantêm o Clássico. Cabelo, pele, barba, olhos, óculos, acessórios e roupas continuam editáveis. As opções equivalentes de cabelo/rosto são interpretações de cada estilo. Óculos e headset podem ser combinados. Editar o visual preserva atributos, contratos e temporadas.
+Na versão 1.5, foi incluído o retrato Estúdio com DiceBear/Avataaars local. A versão 1.6 o substitui pelo retrato **Arena**, uma ilustração vetorial própria com opções masculina e feminina. O editor atual alterna entre Arena e Clássico; saves sem estilo preservam o Clássico. Cabelo, pele, barba, olhos, óculos, acessórios e roupas continuam editáveis. As opções equivalentes de cabelo/rosto são interpretações de cada estilo. Óculos e headset podem ser combinados. Editar o visual preserva atributos, contratos e temporadas.
 
-O bundle já está incluído no projeto: executar Java no IntelliJ, Maven ou Docker não exige Node nem acesso a uma API de avatar. Para desenvolver o renderer: `npm ci` e `npm run build:avatar`. Dependências fixadas: `@dicebear/core` e `@dicebear/avataaars` 9.4.2. Avataaars é um design de Pablo Stanley ([fonte](https://avataaars.com/)); o código DiceBear usa licença MIT. Licenças completas em `src/main/resources/static/vendor/licenses/`. O enquadramento, as estampas e os acessórios adicionais são adaptações do jogo.
+Executar Java no IntelliJ, Maven ou Docker não exige Node nem acesso a uma API de avatar. O bundle legado do Estúdio permanece arquivado com suas licenças, sem ser carregado pela interface atual. Para recompilar esse bundle legado: `npm ci` e `npm run build:avatar`. Dependências fixadas: `@dicebear/core` e `@dicebear/avataaars` 9.4.2. Avataaars é um design de Pablo Stanley ([fonte](https://avataaars.com/)); o código DiceBear usa licença MIT. Licenças completas em `src/main/resources/static/vendor/licenses/`. O enquadramento, as estampas e os acessórios adicionais são adaptações do jogo.
 
 As nove imagens enviadas pelo proprietário em `vct.zip` estão em `static/trophies/`: Champions, Masters, VCT Americas, EMEA, Pacific, China e Challengers Brazil, Korea e Spain. São exibidas conforme o nome da competição, com ampliação por clique; circuitos sem imagem correspondente preservam o SVG genérico. A galeria de referência mostra todas as nove imagens, sem conceder conquistas. Apenas vitórias elegíveis aparecem na coleção pessoal. O calendário e as vagas continuam simplificados; a presença de um troféu na galeria não acrescenta uma competição ao motor. As imagens são referências fornecidas pelo usuário, sem alegação de autoria ou afiliação oficial.
 

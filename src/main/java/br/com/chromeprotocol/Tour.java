@@ -13,7 +13,7 @@ public final class Tour {
         var existing=s.campaigns.get(s.phase);if(existing!=null)return existing;
         var c=new GameState.Campaign();
         c.part=elite(s)?switch(s.phase){case 3->"kickoff";case 5,8->"groups";case 4,6,10->"qualifier";default->"bracket";}:"league";
-        if(s.phase==9){c.seed=s.campaigns.containsKey(8)?s.campaigns.get(8).seed:2;seedBracket(c);}
+        if(s.phase==9){c.part="bracket";c.seed=s.campaigns.containsKey(8)?Math.max(1,s.campaigns.get(8).seed):2;seedBracket(c);}
         if((s.phase==4&&s.campaigns.containsKey(3)&&s.campaigns.get(3).champion)||(s.phase==6&&s.campaigns.containsKey(5)&&s.campaigns.get(5).champion))c.part="bracket";
         return c;
     }
@@ -62,7 +62,7 @@ public final class Tour {
         var names=pool(s);f.opponent=c.part.equals("groups")?names.get(groupOpponent(c.groupWins+c.groupLosses)-1):names.get(c.played%names.size());
         f.bestOf=grandFinal(c)||c.part.equals("bracket")&&c.bracketLosses==1&&c.lowerRemaining==1?5:3;return f;
     }
-    public static Agenda agenda(GameState s){if(!Calendar.match(s)||s.legacyMap||s.pendingCards||s.ended)return null;var c=progress(s);var f=fixture(s);return new Agenda(f.competition,f.round,c.played,f.bestOf,f.opponent,f.critical,c.part.equals("groups")?standings(s,c):List.of(),elite(s)?"Trajetória simulada: grupos e chaves com eliminação; vagas dependem dos resultados.":"Calendário de jogo: 26 séries em três etapas (8 + 8 + 10). Não reproduz a tabela oficial do Challengers.");}
+    public static Agenda agenda(GameState s){if(!Calendar.match(s)||s.legacyMap||s.pendingCards||s.ended)return null;var c=progress(s);var f=fixture(s);return new Agenda(f.competition,f.round,c.played,f.bestOf,f.opponent,f.critical,c.part.equals("groups")?standings(s,c):List.of(),elite(s)?"Trajetória simulada: grupos e chaves com eliminação; vagas dependem dos resultados.":s.phase==9?"Ascension regional simulado: chave com eliminação dupla. O título garante VCT na próxima temporada.":"Calendário de jogo: 26 séries de base (8 + 8 + 10), com Ascension adicional para independentes classificados. Não reproduz a tabela oficial do Challengers.");}
     /** Called only after a complete series has been recorded. */
     static void result(GameState s,boolean won){
         var c=s.campaigns.computeIfAbsent(s.phase,k->progress(s));c.played++;if(won)c.wins++;else c.losses++;
@@ -74,6 +74,6 @@ public final class Tour {
             default->{if(grandFinal(c)){c.done=true;c.champion=won;c.qualified=true;}else if(!won){c.bracketLosses++;if(c.bracketLosses>=2)c.done=true;else c.lowerRemaining=c.upperWins==0?4:c.upperWins==1?3:1;}else if(c.bracketLosses==1)c.lowerRemaining--;else c.upperWins++;if(c.upperWins>=2||c.bracketLosses==1&&c.lowerRemaining<=1)c.qualified=true;}
         }
         if(Calendar.reserve(s))return;
-        switch(s.phase){case 3->s.qualifiedMasters1=elite(s)&&c.qualified;case 5->s.qualifiedMasters2=elite(s)&&c.qualified;case 8->s.qualifiedPlayoffs=elite(s)&&c.qualified;case 9->s.qualifiedChampions=elite(s)&&c.qualified&&s.age>=18;default->{}}
+        switch(s.phase){case 3->s.qualifiedMasters1=elite(s)&&c.qualified;case 5->s.qualifiedMasters2=elite(s)&&c.qualified;case 8->{s.qualifiedPlayoffs=elite(s)&&c.qualified;s.qualifiedAscension=!elite(s)&&s.contract!=null&&!Calendar.academy(s)&&c.done&&c.wins>=Math.ceil(quota(s)*.6);if(s.qualifiedAscension)c.seed=c.wins>=8?1:c.wins>=7?2:3;}case 9->{if(elite(s))s.qualifiedChampions=c.qualified;else if(c.champion&&s.qualifiedAscension)s.vctPromotions.put(s.contract.orgId(),s.year+1);}default->{}}
     }
 }

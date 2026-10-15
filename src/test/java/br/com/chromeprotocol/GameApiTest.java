@@ -112,6 +112,7 @@ class GameApiTest {
     }
 
     private JsonNode action(Cookie cookie,String type,String target,int revision) throws Exception {
+        if(target.startsWith("offer-")){var state=mapper.readValue(repository.findById(UUID.fromString(cookie.getValue())).orElseThrow().state,GameState.class);target=Catalog.offers(state).stream().filter(o->o.id().startsWith("offer:")).toList().get(Integer.parseInt(target.substring(6))).id();}
         return mapper.readTree(mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action(type,target,revision)))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
     }
     @Test void runBatchesPersistEverySeriesAndMapWithoutRerollOrDuplicate() throws Exception {
@@ -126,6 +127,21 @@ class GameApiTest {
         mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(body.replace("run","cheat"))).andExpect(status().isBadRequest());
         for(String icon:java.util.List.of("champions","masters","regional"))mvc.perform(get("/trophies/"+icon+".svg")).andExpect(status().isOk());
     }
+    @Test void previousIndependentQualificationMigratesWithoutPromotingAcademies() throws Exception {
+        for(String club:java.util.List.of("red-canids","mibr-academy")){
+            Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();
+            var state=mapper.readValue(row.state,GameState.class);state.rulesVersion=3;state.phase=9;
+            var org=Catalog.ORGS.stream().filter(o->o.id().equals(club)).findFirst().orElseThrow();
+            state.contract=new GameState.Contract(club,org.name(),org.tier(),3000,2026,"Titular",24);
+            var stage=new GameState.Campaign();stage.done=true;stage.wins=6;stage.played=10;state.campaigns.put(8,stage);
+            row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+            var view=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("game");
+            assertEquals(4,view.path("character").path("rulesVersion").asInt());
+            assertEquals(!org.academy(),view.path("character").path("qualifiedAscension").asBoolean());
+            assertEquals(0,view.path("character").path("vctPromotions").size());
+        }
+    }
+
     @Test void unfinishedLegacyMapIsNotInventedAsAFullSeries() throws Exception {
         Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);state.rulesVersion=2;state.phase=3;state.wins=7;state.match=new GameState.Match();state.match.opponent="Mix antigo";state.match.map="Haven";state.match.competition="Premier antigo";state.match.stage=2;state.match.roundsWon=2;state.match.score=9;state.match.opponentScore=7;row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
         var initial=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andExpect(jsonPath("$.game.activeMatch.stage").value(2)).andReturn().getResponse().getContentAsString()).path("game");assertEquals(0,initial.path("character").path("series").size());String choice=initial.path("scene").path("choices").get(0).path("id").asText();var completed=action(cookie,"choice",choice,0).path("character");assertEquals(8,completed.path("wins").asInt());assertEquals(0,completed.path("series").size());assertTrue(completed.path("maps").get(0).path("seriesId").isNull());assertEquals(4,completed.path("phase").asInt());
@@ -156,9 +172,35 @@ class GameApiTest {
         state.attributes.replaceAll((k,v)->80);state.contract=new GameState.Contract("furia","FURIA",3,500,2028,"Reserva",12);row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
         mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.contract.position").value("Titular")).andExpect(jsonPath("$.game.character.appearance.portraitStyle").value("classic"));
         mvc.perform(post("/api/game/appearance").cookie(cookie).with(csrf()).contentType("application/json").content("{\"revision\":0,\"appearance\":{\"portraitStyle\":\"studio\",\"hair\":\"long\"}}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.character.appearance.portraitStyle").value("studio"));
-        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.appearance.portraitStyle").value("studio")).andExpect(jsonPath("$.game.character.appearance.hair").value("long"));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.character.appearance.portraitStyle").value("arena"));
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.appearance.portraitStyle").value("arena")).andExpect(jsonPath("$.game.character.appearance.hair").value("long"));
         for(String id:java.util.List.of("champions","masters","americas","emea","pacific","china","brazil","korea","spain"))mvc.perform(get("/trophies/"+id+".png")).andExpect(status().isOk());
         mvc.perform(get("/vendor/avatar-studio.js")).andExpect(status().isOk());
     }
+    @Test void displayedMarketIdsAlwaysSignTheSameClubIncludingRenewalAndInternationalOffers() throws Exception {
+        for(String wanted:java.util.List.of("renew","offer:sentinels","offer:fnatic","offer:drx","promote:mibr")){
+            Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);state.phase=2;state.age=15;state.reputation=100;state.attributes.replaceAll((k,v)->85);state.expiredContract=new GameState.Contract(wanted.startsWith("promote")?"mibr-academy":"nrg",wanted.startsWith("promote")?"MIBR Academy":"NRG",wanted.startsWith("promote")?1:3,18000,2025,"Titular",36);
+            // Find an annual seed offering the requested club; identity remains stable for that seed.
+            for(int seed=0;seed<1000;seed++){state.careerSeed=seed;if(Catalog.offers(state).stream().anyMatch(o->o.id().equals(wanted)))break;}
+            var proposal=Catalog.offers(state).stream().filter(o->o.id().equals(wanted)).findFirst().orElseThrow();row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+            var view=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("game");
+            var names=new java.util.HashSet<String>();for(var offer:view.path("offers"))assertTrue(names.add(offer.path("orgId").asText()),"Distinct organizations");
+            var signed=action(cookie,"choice",wanted,0).path("character").path("contract");assertEquals(proposal.orgId(),signed.path("orgId").asText());assertEquals(proposal.name(),signed.path("name").asText());assertEquals(proposal.salary(),signed.path("salary").asInt());
+            mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.contract.orgId").value(proposal.orgId()));
+        }
+    }
+    @Test void femaleArenaAppearancePersistsWithoutChangingCareerAndLegacyStudioUpgrades() throws Exception {
+        Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);var attrs=new java.util.LinkedHashMap<>(state.attributes);int money=state.money;
+        mvc.perform(post("/api/game/appearance").cookie(cookie).with(csrf()).contentType("application/json").content("{\"revision\":0,\"appearance\":{\"portraitStyle\":\"arena\",\"presentation\":\"feminine\",\"hair\":\"ponytail\",\"outfit\":\"runner\"}}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.character.appearance.presentation").value("feminine"));
+        var saved=mapper.readValue(repository.findById(row.id).orElseThrow().state,GameState.class);assertEquals(attrs,saved.attributes);assertEquals(money,saved.money);assertEquals("feminine",saved.appearance.presentation());
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.appearance.presentation").value("feminine"));
+        mvc.perform(post("/api/game/appearance").cookie(cookie).with(csrf()).contentType("application/json").content("{\"revision\":1,\"appearance\":{\"presentation\":\"invalid\"}}" )).andExpect(status().isBadRequest());
+    }
+    @Test void regionalAccessSurvivesReloadAndRevaluesExpiredContractAtNewSeason() throws Exception {
+        Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);state.year=2027;state.age=16;state.phase=2;state.contract=new GameState.Contract("red-canids","RED Canids Kalunga",2,3000,2028,"Titular",24);state.vctPromotions.put("red-canids",2027);row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.contract.tier").value(3)).andExpect(jsonPath("$.game.circuit").value("VCT Americas"));
+        var result=action(cookie,"choice","honor",0).path("character");assertEquals(2027,result.path("vctPromotions").path("red-canids").asInt());assertTrue(result.path("contract").path("salary").asInt()>3000);
+    }
+
 }

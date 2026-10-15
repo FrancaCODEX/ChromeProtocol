@@ -105,7 +105,13 @@ public final class Catalog {
         new Organization("mibr-academy","MIBR Academy","AMERICAS",1,500,"teal","/teams/mibr.png",true),
         new Organization("red-canids","RED Canids Kalunga","AMERICAS",2,2600,"red","",false),
         new Organization("2game","2GAME","AMERICAS",2,2400,"blue","",false),
-        new Organization("intz","INTZ","AMERICAS",2,2500,"teal","",false));
+        new Organization("intz","INTZ","AMERICAS",2,2500,"teal","",false),
+        new Organization("fnatic-academy","Fnatic Academy","EMEA",1,900,"orange","/teams/fnatic.png",true),
+        new Organization("drx-academy","DRX Academy","PACIFIC",1,900,"blue","/teams/drx.png",true),
+        new Organization("edg-academy","EDG Academy","CN",1,900,"red","/teams/edward-gaming.png",true),
+        new Organization("emea-contenders","EMEA Contenders","EMEA",2,2800,"blue","",false),
+        new Organization("pacific-contenders","Pacific Contenders","PACIFIC",2,2800,"blue","",false),
+        new Organization("china-contenders","China Contenders","CN",2,2800,"red","",false));
     public static final List<String> PHASES = List.of("Preparação","Peneiras","Contratos","Kickoff / Etapa 1","Masters I","Stage 1 / Etapa 2","Masters II","Evento inesperado","Stage 2","Playoffs regionais","Champions","Prêmios individuais","Balanço anual");
     public static final List<String> MONTHS = List.of("Janeiro","Janeiro","Janeiro","Janeiro–Fevereiro","Março","Abril–Maio","Junho","Junho–Julho","Julho–Agosto","Agosto–Setembro","Setembro–Outubro","Novembro","Dezembro");
     public static final int[] MONTH_START = {0,0,0,0,2,3,5,6,6,7,8,10,11,12};
@@ -135,7 +141,7 @@ public final class Catalog {
     public static Country country(String id) { return COUNTRIES.stream().filter(c->c.id().equals(id)).findFirst().orElseThrow(()->new IllegalArgumentException("Escolha uma nacionalidade válida.")); }
     public static Role role(String id) { return ROLES.stream().filter(r->r.id().equals(id)).findFirst().orElseThrow(()->new IllegalArgumentException("Escolha uma função válida.")); }
     public static int overall(GameState s) { return (int)Math.round(s.attributes.values().stream().mapToInt(Integer::intValue).average().orElse(0)); }
-    public static String circuit(GameState s) { int tier=s.contract==null?1:s.contract.tier();return tier==3?"VCT "+Calendar.regionName(Calendar.region(s)):tier==2||Calendar.academy(s)?Calendar.challengers(s):"Premier / Base"; }
+    public static String circuit(GameState s) { int tier=Calendar.tier(s);return tier==3?"VCT "+Calendar.regionName(Calendar.region(s)):tier==2||Calendar.academy(s)?Calendar.challengers(s):"Premier / Base"; }
     public static String team(GameState s) { return s.contract==null?"Mix "+country(s.nationality).name():s.contract.name(); }
     public static final int STARTER_OVR = 80;
     /** Reconcile older saves and promote on permanent growth without changing pay or term. */
@@ -152,27 +158,51 @@ public final class Catalog {
             }
         }
     }
-    public static List<Offer> offers(GameState s) {
-        String region=country(s.nationality).region();
-        int eligible=s.age>=18 && s.reputation>=40 && overall(s)>=45 ? 3 : s.age>=16 && s.reputation>=14 ? 2 : 1;
-        var pool=new ArrayList<>(ORGS.stream().filter(o->o.tier()==eligible).toList());
-        pool.sort(Comparator.comparingInt((Organization o)->o.region().equals(region)?0:1).thenComparing(Organization::id));
-        var local=pool.stream().filter(o->o.region().equals(region)).toList();
-        if(local.size()>=3)pool=new ArrayList<>(local);
-        Collections.rotate(pool,-Math.floorMod(s.year-2026,pool.size()));
-        var result=new ArrayList<Offer>();
-        for(int i=0;i<3;i++) {
-            Organization o=pool.get(i%pool.size()); boolean reserve=i==2 && overall(s)<STARTER_OVR;
-            int salary=o.baseSalary()+s.reputation*22+(reserve?o.baseSalary()/3:0);
-            int years=i==1?2:1;
-            result.add(new Offer("offer-"+i,o.id(),o.name(),o.tier(),salary,years,reserve?"Reserva":"Titular",o.tier()*12+(reserve?5:0),
-                (o.region().equals(region)?"Na sua região":"Mudança de região")+" · "+(reserve?"Mais renda; scrims e menor exposição":"Vaga no quinteto e partidas do circuito")));
+    public static final Map<String,String> ACADEMY_PARENTS=Map.of("furia-academy","furia","mibr-academy","mibr","fnatic-academy","fnatic","drx-academy","drx","edg-academy","edward-gaming");
+    public static int organizationTier(GameState s,Organization o){return s.vctPromotions.getOrDefault(o.id(),Integer.MAX_VALUE)<=s.year?3:o.tier();}
+    /** Fictional monthly valuation: league floor, OVR, reputation and individual track record. */
+    public static int marketSalary(GameState s,Organization o,int tier){
+        int floor=tier==3?Math.max(9500,o.baseSalary()):tier==2?Math.max(2400,o.baseSalary()):o.baseSalary();
+        int growth=Math.max(0,overall(s)-35)*(tier==3?350:tier==2?150:90);
+        return floor+growth+s.reputation*(tier==3?55:tier==2?35:25)+Math.min(8,s.titles)*(tier==3?600:250);
+    }
+    public static void refreshContractTier(GameState s){
+        if(s.contract==null)return;var old=s.contract;
+        if(s.vctPromotions.getOrDefault(old.orgId(),Integer.MAX_VALUE)<=s.year&&old.tier()<3){
+            var org=ORGS.stream().filter(o->o.id().equals(old.orgId())).findFirst().orElseThrow();
+            s.contract=new GameState.Contract(old.orgId(),old.name(),3,Math.max(old.salary(),marketSalary(s,org,3)),old.endYear(),old.position(),36);
         }
-        var old=s.expiredContract;
-        if(old!=null && old.endYear()==s.year-1 && s.contract==null) {
-            String position=overall(s)>=STARTER_OVR?"Titular":old.position();
-            int salary=Math.max(old.salary(),ORGS.stream().filter(o->o.id().equals(old.orgId())).mapToInt(Organization::baseSalary).findFirst().orElse(0)+s.reputation*22);
-            result.add(0,new Offer("renew",old.orgId(),old.name(),old.tier(),salary,1,position,old.pressure(),"Renovação · mais uma temporada com o mesmo clube · sem multa"));
+    }
+    public static Offer academyInvitation(GameState s){
+        var from=s.contract!=null?s.contract:s.expiredContract;
+        if(from==null||overall(s)<55||s.reputation<25)return null;
+        String parent=ACADEMY_PARENTS.get(from.orgId());if(parent==null)return null;
+        var org=ORGS.stream().filter(o->o.id().equals(parent)).findFirst().orElseThrow();
+        return new Offer("promote:"+org.id(),org.id(),org.name(),3,Math.max(from.salary()*120/100,marketSalary(s,org,3)),2,"Titular",36,"Time principal · promoção interna da academy · sem multa · "+Calendar.regionName(org.region()));
+    }
+    public static List<Offer> offers(GameState s) {
+        var result=new ArrayList<Offer>();var invitation=academyInvitation(s);
+        if(invitation!=null)result.add(invitation);
+        if(s.contract!=null)return List.copyOf(result);
+        var old=s.expiredContract;var excluded=new HashSet<String>();
+        if(old!=null&&old.endYear()==s.year-1){
+            var org=ORGS.stream().filter(o->o.id().equals(old.orgId())).findFirst().orElse(null);
+            if(org!=null){int tier=Math.max(old.tier(),organizationTier(s,org));int salary=Math.max((int)Math.ceil(old.salary()*1.10),marketSalary(s,org,tier));
+                result.add(0,new Offer("renew",org.id(),org.name(),tier,salary,1,overall(s)>=STARTER_OVR?"Titular":old.position(),tier*12,"Renovação · valorização de pelo menos 10% · "+Calendar.regionName(org.region())));excluded.add(org.id());}
+        }
+        if(invitation!=null)excluded.add(invitation.orgId());
+        int eligible=s.reputation>=40&&overall(s)>=45?3:s.reputation>=14?2:1;
+        String home=country(s.nationality).region();var regions=new ArrayList<>(List.of("AMERICAS","EMEA","PACIFIC","CN"));regions.remove(home);regions.add(0,home);
+        // At least one distinct destination in every available region. Annual seed changes the clubs, never their identity.
+        var pool=new ArrayList<>(ORGS.stream().filter(o->organizationTier(s,o)==eligible&&!excluded.contains(o.id())).toList());
+        pool.sort(Comparator.comparingInt((Organization o)->Math.floorMod(Objects.hash(s.careerSeed,s.year,o.id()),100000)).thenComparing(Organization::id));
+        var chosen=new ArrayList<Organization>();
+        for(String region:regions)pool.stream().filter(o->o.region().equals(region)).findFirst().ifPresent(chosen::add);
+        for(var org:pool)if(chosen.size()<6&&!chosen.contains(org))chosen.add(org);
+        for(int i=0;i<chosen.size();i++){
+            var org=chosen.get(i);int tier=organizationTier(s,org);boolean reserve=i==chosen.size()-1&&overall(s)<STARTER_OVR;
+            result.add(new Offer("offer:"+org.id(),org.id(),org.name(),tier,marketSalary(s,org,tier)+(reserve?org.baseSalary()/5:0),i%3==1?2:1,reserve?"Reserva":"Titular",tier*12,
+                Calendar.regionName(org.region())+" · "+(org.region().equals(home)?"Sua região":"Transferência internacional")+" · "+(reserve?"Scrims de avaliação":"Vaga no quinteto")));
         }
         return List.copyOf(result);
     }
