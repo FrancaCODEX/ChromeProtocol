@@ -40,7 +40,7 @@ class GameApiTest {
         Cookie cookie=create();
         String action="{\"type\":\"choice\",\"target\":\"prep-aim\",\"revision\":0,\"money\":999999}";
         mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(action))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.character.phase").value(1)).andExpect(jsonPath("$.character.money").value(450)).andExpect(jsonPath("$.character.outcome.title").exists());
+            .andExpect(status().isOk()).andExpect(jsonPath("$.character.phase").value(1)).andExpect(jsonPath("$.character.money").value(500)).andExpect(jsonPath("$.character.outcome.title").exists());
         mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.outcome.changes[0]").exists());
         mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(action)).andExpect(status().isBadRequest());
         mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content("{\"type\":\"choice\",\"target\":\"trial-steady\",\"revision\":1}")).andExpect(status().isBadRequest());
@@ -77,8 +77,23 @@ class GameApiTest {
         mvc.perform(post("/api/game/restart").cookie(cookie).with(csrf()).contentType("application/json").content(restart)).andExpect(status().isBadRequest());
     }
     @Test void identityAndAppearanceAreValidated() throws Exception {
-        mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(NEW.replace("Jett","Sage"))).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(NEW.replace("Jett","Unknown"))).andExpect(status().isBadRequest());
         mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(NEW.substring(0,NEW.length()-1)+",\"appearance\":{\"hair\":\"bad\"}}" )).andExpect(status().isBadRequest());
         mvc.perform(get("/api/game").cookie(new Cookie("CP_CAREER","invalid"))).andExpect(jsonPath("$.started").value(false));
     }
+    @Test void boostFavoritesLeadershipAndPermanentInvestmentPersist() throws Exception {
+        String body=NEW.substring(0,NEW.length()-1)+",\"developmentMode\":\"prodigy\",\"igl\":true,\"favoriteAgents\":[\"Miks\",\"Veto\",\"Waylay\"]}";
+        var cookie=mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.character.igl").value(true)).andExpect(jsonPath("$.character.developmentMode").value("prodigy")).andExpect(jsonPath("$.character.favoriteAgents.length()").value(4)).andReturn().getResponse().getCookie("CP_CAREER");
+        var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);state.money=10000;row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content("{\"type\":\"invest\",\"target\":\"coach\",\"revision\":0}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.character.phase").value(0)).andExpect(jsonPath("$.character.money").value(8500)).andExpect(jsonPath("$.character.investments.coach").value(1)).andExpect(jsonPath("$.character.permanentBonuses.tactics").value(5));
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.outcome").exists()).andExpect(jsonPath("$.game.character.permanentBonuses.tactics").value(5));
+    }
+    @Test void firstVersionCareerMigratesWithoutLosingProgressOrPendingMap() throws Exception {
+        UUID id=UUID.randomUUID();GameState s=new GameEngine(new java.util.Random(1)).create("Veteran","BR","duelist","ranked","Jett",null);s.phase=6;s.money=777;s.revision=14;s.age=20;s.year=2031;s.contract=new GameState.Contract("furia","FURIA",3,5000,2032,"Titular",12);s.match=new GameState.Match();s.match.opponent="Sentinels";s.match.map="Ascent";s.match.stage=1;s.match.score=5;s.match.opponentScore=4;
+        var json=(com.fasterxml.jackson.databind.node.ObjectNode)mapper.valueToTree(s);for(String field:java.util.List.of("rulesVersion","favoriteAgents","developmentMode","maps","cards","investments","permanentBonuses","awards"))json.remove(field);String old=mapper.writeValueAsString(json);repository.saveAndFlush(new Career(id,old));var cookie=new Cookie("CP_CAREER",id.toString());
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andExpect(jsonPath("$.game.character.phase").value(9)).andExpect(jsonPath("$.game.character.money").value(777)).andExpect(jsonPath("$.game.character.revision").value(14)).andExpect(jsonPath("$.game.activeMatch.stage").value(1)).andExpect(jsonPath("$.game.character.maps.length()").value(0));
+        assertEquals(old,repository.findById(id).orElseThrow().state,"Read must not overwrite save");
+    }
+
 }

@@ -3,145 +3,159 @@ package br.com.chromeprotocol;
 import java.util.*;
 import java.util.random.RandomGenerator;
 
-/** A finite 21-season career with persistent, mandatory result acknowledgement. */
+/** Server-owned decisions, permanent progression and a 2026-inspired competition calendar. */
 public final class GameEngine {
     private final RandomGenerator random;
-    public GameEngine(RandomGenerator random) { this.random=Objects.requireNonNull(random); }
+    public GameEngine(RandomGenerator random){this.random=Objects.requireNonNull(random);}
     public record Action(String type,String target,int revision) {}
     public record Choice(String id,String title,String description,String attribute,int chance,String consequence,boolean available) {}
     public record Scene(String tag,String title,String description,String date,List<Choice> choices) {}
-    public record View(GameState character,Scene scene,List<Catalog.Offer> offers,Map<String,String> attributes,List<String> phases,int overall,String team,String circuit) {}
-    public GameState create(String name,String nationality,String role,String background,String agent,Appearance appearance) {
+    public record InvestmentView(Catalog.Investment item,int level,int price,Map<String,Integer> gains,boolean available) {}
+    public record CardView(String id,String name,String rarity,Map<String,Integer> gains,int chanceBonus,String detail) {}
+    public record CalendarEntry(int phase,String name,String period,String status) {}
+    public record Statistics(int maps,int kills,int deaths,int assists,int rounds,double acs,String kd) {}
+    public record View(GameState character,Scene scene,List<Catalog.Offer> offers,Map<String,String> attributes,List<String> phases,int overall,String team,String circuit,
+                       GameState.Match activeMatch,List<InvestmentView> investments,List<CardView> cards,List<CalendarEntry> calendar,Statistics statistics,Statistics seasonStatistics) {}
+
+    public GameState create(String name,String nationality,String role,String background,String agent,Appearance appearance){return create(name,nationality,role,background,agent,appearance,"standard",false,agent==null?List.of():List.of(agent));}
+    public GameState create(String name,String nationality,String role,String background,String agent,Appearance appearance,String mode,boolean igl,List<String> favorites){
         require(name!=null&&!name.isBlank()&&name.strip().length()<=24&&name.codePoints().noneMatch(Character::isISOControl),"Use um nick de 1 a 24 caracteres.");
         Catalog.country(nationality);Catalog.Role selected=Catalog.role(role);
         require(Catalog.BACKGROUNDS.containsKey(background),"Escolha uma trajetória válida.");
-        require(selected.agents().contains(agent),"Escolha um agente da sua função.");
-        GameState s=new GameState();s.name=name.strip();s.nationality=nationality;s.role=role;s.background=background;s.agent=agent;s.appearance=appearance==null?Appearance.defaults():appearance;
+        require(Catalog.AGENTS.stream().anyMatch(a->a.name().equals(agent)),"Escolha um agente válido.");
+        mode=mode==null?"standard":mode;require(Set.of("standard","prodigy").contains(mode),"Escolha um modo válido.");
+        var favoriteSet=new LinkedHashSet<String>();
+        if(favorites!=null){require(favorites.size()<=Catalog.AGENTS.size(),"Muitos favoritos.");for(String a:favorites){require(Catalog.AGENTS.stream().anyMatch(v->v.name().equals(a)),"Agente favorito inválido.");favoriteSet.add(a);}}
+        favoriteSet.add(agent);
+        GameState s=new GameState();s.name=name.strip();s.nationality=nationality;s.role=role;s.background=background;s.agent=agent;s.favoriteAgents.addAll(favoriteSet);s.igl=igl;s.developmentMode=mode;s.careerSeed=random.nextLong();s.appearance=appearance==null?Appearance.defaults():appearance;
         Catalog.ATTRIBUTES.keySet().forEach(k->s.attributes.put(k,30));s.attributes.merge(selected.attribute(),7,Integer::sum);
         s.attributes.merge(background.equals("ranked")?"aim":background.equals("school")?"discipline":"communication",5,Integer::sum);
-        if(background.equals("content"))s.followers=600;
+        if(igl){s.attributes.merge("communication",3,Integer::sum);s.attributes.merge("tactics",2,Integer::sum);}
+        if(mode.equals("prodigy")){s.attributes.replaceAll((k,v)->v+20);s.reputation=20;s.followers=1000;}
+        else if(background.equals("content"))s.followers=600;
         return s;
     }
-    public void customize(GameState s,Appearance appearance,int revision) { require(revision==s.revision,"Sua carreira mudou. Atualize a página.");require(appearance!=null,"Escolha um visual.");s.appearance=appearance;s.revision++; }
-    public View view(GameState s) {
-        return new View(s,s.ended?null:scene(s),s.phase==2&&s.contract==null?Catalog.offers(s):List.of(),Catalog.ATTRIBUTES,Catalog.PHASES,Catalog.overall(s),Catalog.team(s),Catalog.circuit(s));
+    public void customize(GameState s,Appearance appearance,int revision){require(revision==s.revision,"Sua carreira mudou. Atualize a página.");require(appearance!=null,"Escolha um visual.");s.appearance=appearance;s.revision++;}
+    public View view(GameState s){
+        return new View(s,s.ended?null:scene(s),s.phase==2&&s.contract==null?Catalog.offers(s):List.of(),Catalog.ATTRIBUTES,Catalog.PHASES,Catalog.overall(s),Catalog.team(s),Catalog.circuit(s),
+            !s.ended&&!s.pendingCards&&Calendar.match(s)?matchFor(s):null,
+            Catalog.INVESTMENTS.stream().map(i->{int level=s.investments.getOrDefault(i.id(),0);return new InvestmentView(i,level,i.price()*(level+1),previewGains(s,i.bonuses()),!s.ended&&level<i.maxLevel()&&s.money>=i.price()*(level+1));}).toList(),
+            s.pendingCards?cardOffers(s):List.of(),calendar(s),statistics(s.maps.stream().filter(GameState.MapStats::official).toList()),statistics(s.maps.stream().filter(m->m.official()&&m.year()==s.year).toList()));
     }
-    private Choice option(GameState s,String id,String title,String description,String attr,int difficulty,String consequence) {
-        int odds=attr.isEmpty()?100:clamp(51+s.attributes.get(attr)/2-difficulty+(s.energy-50)/12+(s.form-50)/15-s.stress/15+(s.chemistry-50)/15,20,94);
-        if(isMatch(s)&&s.match!=null)odds=clamp(odds+(s.match.roundsWon*2)+(s.contract!=null&&s.contract.position().equals("Reserva")?-4:0),20,94);
-        return new Choice(id,title,description,attr,odds,consequence,true);
+    private int growth(GameState s,int amount){return amount<=0?0:s.developmentMode.equals("prodigy")?(int)Math.ceil(amount*1.5):amount;}
+    private Map<String,Integer> previewGains(GameState s,Map<String,Integer> bonuses){var result=new LinkedHashMap<String,Integer>();bonuses.forEach((key,value)->result.put(key,Math.min(99-s.attributes.get(key),growth(s,value))));return result;}
+    private String gainsText(GameState s,Map<String,Integer> bonuses){return String.join(" · ",previewGains(s,bonuses).entrySet().stream().map(e->Catalog.ATTRIBUTES.get(e.getKey())+" +"+e.getValue()).toList());}
+    private void permanent(GameState s,Map<String,Integer> bonuses){bonuses.forEach((key,value)->{int before=s.attributes.get(key);skill(s,key,value);s.permanentBonuses.merge(key,s.attributes.get(key)-before,Integer::sum);});}
+    private List<CardView> cardOffers(GameState s){var pool=new ArrayList<>(Catalog.CARDS);Collections.shuffle(pool,new Random(Objects.hash(s.careerSeed,s.year,"cards")));var cards=new ArrayList<>(pool.subList(0,3));if(s.developmentMode.equals("prodigy")&&cards.stream().noneMatch(c->c.id().equals("phenom")))cards.set(2,Catalog.CARDS.get(5));return cards.stream().map(c->new CardView(c.id(),c.name(),c.rarity(),previewGains(s,c.bonuses()),s.cardChanceBonus<15?1:0,c.detail())).toList();}
+    private Choice option(GameState s,String id,String title,String description,String attribute,int difficulty,String consequence){
+        int odds=attribute.isEmpty()?100:clamp(51+s.attributes.get(attribute)/2-difficulty+(s.energy-50)/12+(s.form-50)/15-s.stress/15+(s.chemistry-50)/15+s.cardChanceBonus+(s.developmentMode.equals("prodigy")?8:0),20,98);
+        if(!attribute.isEmpty()&&Calendar.match(s)){if(s.match!=null)odds+=s.match.roundsWon*2;if(Calendar.reserve(s))odds-=4;if(s.igl&&id.equals("match-igl"))odds+=5;odds=clamp(odds,20,98);}
+        return new Choice(id,title,description,attribute,odds,consequence,true);
     }
-    private Scene scene(GameState s) {
+    private Scene scene(GameState s){
         var c=new ArrayList<Choice>();String title,description,tag;
-        switch(s.phase) {
-            case 0 -> { tag="PRÉ-TEMPORADA";title=s.age==15?"Toda carreira começa no quarto.":"Um novo ano. O mesmo sonho.";
-                description="Você tem "+s.age+" anos. "+(s.age==15?"Entre a escola e as primeiras filas ranqueadas, nasce a ideia de viver de Valorant.":"O mercado está observando. Sua preparação vai definir como você chega à nova temporada.");
-                c.add(option(s,"prep-aim","Focar na mecânica","Rotina de mira e duelos individuais.","",0,"Mira +4 · energia −12 · estresse +7"));
-                c.add(option(s,"prep-study","Estudar mapas e rotinas","Analisar VODs e organizar treino, estudo e sono.","",0,"Leitura +3 · disciplina +3 · energia +10"));
-                c.add(option(s,"prep-team","Treinar comunicação","Montar um grupo fixo e praticar chamadas.","",0,"Comunicação +4 · química +8")); }
-            case 1 -> {tag="PENEIRA";title=s.age<18?"Um olheiro entrou na sala.":"Seu nome chegou à comissão técnica.";
-                description="Uma comissão acompanha seu teste. Não basta acertar tiros: o time quer saber como você reage sob pressão. Sua reputação e seus atributos definem o nível das propostas em março.";
-                c.add(option(s,"trial-highlight","Buscar o highlight","Assumir duelos difíceis para chamar atenção.","aim",10,"Sucesso: reputação +12 · risco de perder confiança"));
-                c.add(option(s,"trial-team","Jogar pelo coletivo","Comunicar informações e executar o plano do time.","communication",2,"Sucesso: reputação +10 · química +8"));
-                c.add(option(s,"trial-steady","Mostrar consistência","Priorizar fundamentos e manter uma rotina sustentável.","",0,"Reputação +4 · disciplina +2 · estresse −5")); }
-            case 2 -> {tag="MERCADO";title=s.contract==null?"Seu próximo escudo.":"Um contrato também é uma escolha.";
-                description=s.contract==null?"As propostas desta janela estão na mesa. Compare salário mensal, duração e espaço para jogar. Os valores e calendários pertencem à simulação.":"Você tem contrato com "+s.contract.name()+" até dezembro de "+s.contract.endYear()+". Honre o acordo, tente renegociar ou pague a liberação para voltar ao mercado.";
-                if(s.contract==null){ for(Catalog.Offer o:Catalog.offers(s))c.add(option(s,o.id(),"Assinar com "+o.name(),o.position()+" · R$ "+o.salary()+"/mês · "+o.years()+" temporada(s)","",0,o.detail()));c.add(option(s,"free-agent","Continuar sem organização","Disputar o circuito com um mix e manter liberdade.","",0,"Sem salário fixo · exposição por conta própria")); }
-                else {c.add(option(s,"honor","Cumprir o contrato","Manter a rotina e fortalecer sua posição na equipe.","",0,"Química +10 · controle emocional +2"));c.add(option(s,"renegotiate","Pedir uma valorização","Negociar aumento sem trocar de organização.","communication",12,"Sucesso: salário +15% · falha: pressão +8"));int fee=s.contract.salary()*2;c.add(new Choice("release","Pedir liberação","Pagar R$ "+fee+" para encerrar o vínculo e ouvir novas propostas.","",100,"Custo da rescisão · permanece na janela",s.money>=fee));} }
-            case 4 -> {tag="FORA DO SERVIDOR";String[][] events={{"Uma marca quer o seu rosto.","Uma marca de periféricos propõe uma campanha durante a pausa."},{"A torcida começou a cobrar.","Um corte da sua última partida viralizou. A internet exige uma resposta."},{"O grupo está rachado.","Dois colegas discordam das chamadas. A comissão quer saber sua posição."},{"O corpo pediu uma pausa.","A rotina apertou. Você precisa decidir onde colocar sua energia."},{"Uma entrevista pode mudar tudo.","Uma entrevista ao vivo pode levar sua história para mais gente."},{"A vida acontece fora do jogo.","Amigos e família sentem sua ausência. Existe uma pausa entre as etapas."}};
-                String[] event=events[Math.floorMod(s.year-2026,events.length)];title=event[0];description=event[1]+" A escolha afeta sua imagem, seu grupo e como você chega à próxima partida.";
-                c.add(option(s,"life-brand","Investir na sua imagem","Produzir conteúdo e aproveitar a oportunidade pública.","communication",5,"Renda e seguidores · menos energia · mais estresse"));
-                c.add(option(s,"life-team","Conversar com a equipe","Alinhar expectativas sem expor os colegas.","",0,"Química +12 · comunicação +2 · estresse −5"));
-                c.add(option(s,"life-rest","Priorizar sua vida pessoal","Reservar a pausa para estudo, família e descanso.","",0,"Energia +35 · estresse −20 · disciplina +2")); }
-            case 7 -> {tag="FIM DA TEMPORADA";title="O que fica deste ano?";description="A temporada termina com "+s.seasonWins+" vitória(s) e "+s.seasonLosses+" derrota(s). "+(s.age>=35?"Você chegou à última temporada desta carreira. Escolha como encerrar seu ciclo.":"Antes de completar "+(s.age+1)+" anos, escolha como quer atravessar a pausa.");
-                c.add(option(s,"year-develop","Voltar mais completo","Treinar seus fundamentos com acompanhamento.","",0,"Todos os atributos +2 · energia recuperada"));
-                c.add(option(s,"year-brand","Construir sua marca","Trabalhar conteúdo, contatos e projetos pessoais.","",0,"Seguidores +500 · renda extra · comunicação +2"));
-                c.add(option(s,"year-rest","Desligar e recuperar","Passar a pausa longe da competição.","",0,"Energia 100 · estresse −35 · controle emocional +3"));
-                if(s.age>=23)c.add(option(s,"retire","Encerrar a carreira","Escolher a hora de sair e guardar o seu legado.","",0,"Aposentadoria · encerra esta carreira")); }
-            default -> { tag="MATCH DAY";GameState.Match m=matchFor(s);title=m.competition;description=Catalog.team(s)+" x "+m.opponent+" · "+m.map+". "+List.of("O adversário muda o ritmo no primeiro tempo. Como você responde?","O jogo aperta. Uma chamada agora pode abrir vantagem.","Chegou o round que muda o mapa. A equipe espera sua decisão.").get(m.stage);
-                c.add(option(s,"match-aggressive","Assumir o duelo","Pedir o espaço e buscar a primeira eliminação.","aim",12,"Mais destaque pessoal · risco maior · energia −12"));
-                c.add(option(s,"match-control","Mudar a leitura","Adaptar a execução com informação e controle de mapa.","tactics",5,"Leitura e preparo · energia −8"));
-                c.add(option(s,"match-support","Confiar no coletivo","Combinar utilitários e jogar pela troca.","communication",0,"Química e consistência · energia −5")); }
+        if(s.pendingCards){for(var card:cardOffers(s)){String benefits=String.join(" · ",card.gains().entrySet().stream().map(e->Catalog.ATTRIBUTES.get(e.getKey())+" +"+e.getValue()).toList());c.add(option(s,"card:"+card.id(),card.name(),card.rarity()+" · "+card.detail(),"",0,benefits+" · chance permanente +"+card.chanceBonus()+"%"));}return new Scene("CARTAS DE EVOLUÇÃO","A temporada acaba. O talento fica.","Escolha uma das três cartas de "+s.year+". Os ganhos são permanentes, conhecidos antes da escolha e não expiram. Só uma carta pode ser escolhida por temporada.",date(s),List.copyOf(c));}
+        if(Calendar.match(s)){
+            GameState.Match m=matchFor(s);var event=Events.round(s,m.stage);tag="MATCH DAY";title=m.competition;description=Catalog.team(s)+" x "+m.opponent+" · "+m.map+". "+event.title()+" "+event.description();
+            for(String requested:event.plays()){String id=requested.equals("match-igl")&&!s.igl?"match-support":requested;var play=Events.play(id);if(c.stream().noneMatch(x->x.id().equals(id)))c.add(option(s,id,play.title(),play.description(),play.attribute(),play.difficulty(),"Round-chave · "+(s.igl&&id.equals("match-igl")?"bônus de IGL · ":"")+"energia −"+Math.max(0,play.energy()-s.investments.getOrDefault("nutrition",0))));}
+            return new Scene(tag,title,description,date(s),List.copyOf(c));
+        }
+        switch(s.phase){
+            case 0->{tag="PRÉ-TEMPORADA";String[] openings={"Um novo repertório para a temporada.","A rotina que sustenta um talento.","O próximo salto começa no treino.","Um novo ano. A mesma ambição."};title=s.age==15?"Toda carreira começa no quarto.":openings[Math.floorMod(s.year,openings.length)];description="Você tem "+s.age+" anos. Prepare a temporada sem perder habilidades: a evolução adquirida acompanha toda a carreira.";
+                c.add(option(s,"prep-aim","Focar na mecânica","Trabalhar precisão e duelos.","",0,gainsText(s,Catalog.bonus("aim",4))+" · energia −12"));c.add(option(s,"prep-study","Estudar mapas e rotinas","Revisar VODs e organizar a preparação.","",0,gainsText(s,Catalog.bonus("tactics",3,"discipline",3))));c.add(option(s,"prep-team","Treinar comunicação","Alinhar chamadas, trocas e utilitários.","",0,gainsText(s,Catalog.bonus("communication",4))+" · química +8"));
+                if(s.igl)c.add(option(s,"prep-igl","Desenhar o playbook como IGL","Preparar planos A, B e adaptações.","",0,gainsText(s,Catalog.bonus("tactics",3,"communication",3))));else c.add(option(s,"become-igl","Assumir a liderança das chamadas","Acumular a função de IGL sem trocar sua função de agente.","",0,"IGL ativado · "+gainsText(s,Catalog.bonus("communication",3,"tactics",2))));}
+            case 1->{tag="PENEIRA";title=s.age<18?"Uma nova chance de mostrar seu jogo.":"A comissão acompanha seu teste.";description="Destaque, leitura e consistência abrem propostas. As chances refletem atributos, condição e seus bônus permanentes.";
+                c.add(option(s,"trial-highlight","Buscar o highlight","Assumir duelos de maior risco para chamar atenção.","aim",10,"Sucesso: reputação +12 · nenhuma perda de habilidade"));c.add(option(s,"trial-team","Jogar pelo coletivo","Demonstrar informação e execução.","communication",2,"Sucesso: reputação +10 · química +8"));c.add(option(s,"trial-steady","Mostrar consistência","Priorizar fundamentos e rotina.","",0,"Reputação +4 · "+gainsText(s,Catalog.bonus("discipline",2))));c.add(option(s,"trial-vod","Apresentar uma leitura tática","Explicar como você adaptaria o quinteto ao rival.","tactics",3,"Sucesso: reputação +10 · "+gainsText(s,Catalog.bonus("tactics",2))));}
+            case 2->{tag="MERCADO";title=s.contract==null?"Seu próximo escudo.":"Um contrato também é uma escolha.";description=s.contract==null?"Compare salário, duração, região e espaço no quinteto. As organizações são reais; as ofertas pertencem a esta carreira simulada.":"Seu vínculo com "+s.contract.name()+" vale até dezembro de "+s.contract.endYear()+". Você pode cumprir, renegociar ou pagar a liberação.";
+                if(s.contract==null){for(var o:Catalog.offers(s))c.add(option(s,o.id(),"Assinar com "+o.name(),o.position()+" · R$ "+o.salary()+"/mês · "+o.years()+" temporada(s)","",0,o.detail()));c.add(option(s,"free-agent","Continuar com um mix","Manter a liberdade e jogar o Premier.","",0,"Sem salário fixo · preparação por conta própria"));}
+                else{c.add(option(s,"honor","Cumprir o contrato","Fortalecer a rotina e sua posição.","",0,"Química +10 · "+gainsText(s,Catalog.bonus("composure",2))));c.add(option(s,"renegotiate","Negociar valorização","Pedir reajuste sem mudar o prazo.","communication",12,"Sucesso: salário +15% · falha afeta só o estresse"));int fee=s.contract.salary()*2;c.add(new Choice("release","Pedir liberação","Rescindir e ouvir propostas nesta mesma janela.","",100,"Custo: R$ "+fee,s.money>=fee));}}
+            case 11->{tag="PRÊMIOS INDIVIDUAIS";title="Seu nome além do placar.";var awards=annualAwards(s);description=awards.isEmpty()?"Os números da temporada estão fechados. Você não atingiu os critérios individuais neste ano, mas suas habilidades continuam intactas.":"Reconhecimentos desta temporada: "+String.join(" · ",awards.stream().map(GameState.Award::title).toList())+". Os critérios aparecem na sala de prêmios.";
+                c.add(option(s,"awards-team","Dividir o mérito com o quinteto","Valorizar quem esteve nas suas execuções.","",0,"Química +8 · registrar prêmios"));c.add(option(s,"awards-fans","Celebrar com a comunidade","Agradecer a torcida que acompanhou a campanha.","",0,"Seguidores +400 · registrar prêmios"));c.add(option(s,"awards-study","Usar os números para evoluir","Traçar metas sem diminuir os atributos atuais.","",0,gainsText(s,Catalog.bonus("discipline",2))+" · registrar prêmios"));}
+            case 12->{tag="FIM DA TEMPORADA";title="Feche o ano. Escolha seu próximo salto.";description="A temporada de "+s.year+" termina com "+s.seasonWins+" vitória(s), "+s.seasonLosses+" derrota(s) e suas estatísticas registradas. Depois do balanço, você escolherá uma carta permanente.";
+                c.add(option(s,"year-develop","Voltar mais completo","Manter um bloco de fundamentos na pausa.","",0,gainsText(s,Catalog.bonus("aim",2,"tactics",2,"communication",2,"discipline",2,"composure",2))));c.add(option(s,"year-brand","Construir sua marca","Trabalhar conteúdo, contatos e projetos.","",0,"Seguidores +500 · renda extra · "+gainsText(s,Catalog.bonus("communication",2))));c.add(option(s,"year-rest","Recuperar o ritmo","Passar a pausa longe da pressão.","",0,"Energia 100 · estresse −35 · "+gainsText(s,Catalog.bonus("composure",3))));if(s.age>=23)c.add(option(s,"retire","Encerrar a carreira","Escolher uma última carta e guardar seu legado.","",0,"Aposentadoria após a recompensa anual"));}
+            default->{var life=Events.life(s);tag=s.phase==7?"ACONTECIMENTO INESPERADO":"ENTRE COMPETIÇÕES";title=life.title();description=(s.phase==7?"":Calendar.competition(s)+": você não tem vaga nesta competição. ")+life.description();for(var o:life.choices())c.add(option(s,"life:"+o.id(),o.title(),o.description(),o.attribute(),o.difficulty(),gainsText(s,o.bonuses())+" · sucesso: até R$ "+o.cash()+" / +"+o.followers()+" seguidores"));}
         }
         return new Scene(tag,title,description,date(s),List.copyOf(c));
     }
-    public void act(GameState s,Action action) {
+    public void act(GameState s,Action action){
         require(action!=null&&action.revision()==s.revision,"Sua carreira mudou em outra aba. Atualize antes de continuar.");
-        if("continue".equals(action.type())) {require(s.outcome!=null,"Nenhum resultado pendente.");s.outcome=null;s.revision++;return;}
-        require(s.outcome==null,"Leia o resultado e continue antes de fazer outra escolha.");require(!s.ended,"Sua carreira terminou. Comece outra história.");require("choice".equals(action.type()),"Ação inválida.");
-        Choice choice=scene(s).choices().stream().filter(c->c.id().equals(action.target())).findFirst().orElseThrow(()->new IllegalArgumentException("Escolha inválida para esta ocasião."));
-        require(choice.available(),"Você não tem saldo para esta liberação.");
-        Map<String,String> before=snapshot(s);String when=date(s);int oldPhase=s.phase;boolean success=choice.chance()==100||random.nextInt(100)<choice.chance();String narrative;String heading=choice.title();String tone=success?"good":"bad";boolean advance=true;
-        switch(choice.id()) {
-            case "prep-aim" -> {skill(s,"aim",4);s.energy-=12;s.stress+=7;narrative="Você ganhou precisão, mas a rotina intensa cobrou energia. Os primeiros testes estão chegando.";}
-            case "prep-study" -> {skill(s,"tactics",3);skill(s,"discipline",3);s.energy+=10;s.stress-=5;narrative="O plano de estudos deixou sua rotina mais estável e sua leitura mais afiada.";}
-            case "prep-team" -> {skill(s,"communication",4);s.chemistry+=8;narrative="As chamadas começaram a fluir. Você chega à peneira com mais confiança no grupo.";}
-            case "trial-highlight" -> {s.energy-=12;if(success){s.reputation+=12;s.followers+=250;skill(s,"aim",2);narrative="Seu highlight circulou entre os olheiros. A reputação subiu antes da janela de contratos.";}else{s.form-=7;s.stress+=8;narrative="Você forçou duelos demais. A comissão gostou da coragem, mas quer mais consistência.";}}
-            case "trial-team" -> {s.energy-=8;if(success){s.reputation+=10;s.chemistry+=8;skill(s,"communication",2);narrative="A comissão elogiou sua comunicação. O coletivo colocou seu nome nas conversas do mercado.";}else{s.form-=3;s.stress+=4;narrative="As informações chegaram tarde em momentos importantes. A avaliação foi discreta, e você segue com oportunidades de base.";}}
-            case "trial-steady" -> {s.reputation+=4;skill(s,"discipline",2);s.stress-=5;narrative="Um teste sem grandes highlights, mas com fundamentos sólidos. Há espaço para crescer sem pular etapas.";}
-            case "free-agent" -> {s.chemistry-=5;narrative="Você manteve a liberdade e vai disputar a temporada com um mix. Não haverá salário fixo até um novo contrato.";}
-            case "honor" -> {s.chemistry+=10;skill(s,"composure",2);narrative="A comissão recebeu bem seu compromisso. O contrato segue até "+s.contract.endYear()+".";}
-            case "renegotiate" -> {if(success){var c=s.contract;s.contract=new GameState.Contract(c.orgId(),c.name(),c.tier(),c.salary()*115/100,c.endYear(),c.position(),c.pressure());narrative="A organização aceitou sua valorização. O salário foi reajustado em 15%, sem alterar o prazo.";}else{s.stress+=8;narrative="A diretoria recusou o reajuste. O contrato continua, mas a conversa aumentou a pressão sobre você.";}}
-            case "release" -> {s.money-=s.contract.salary()*2;s.contract=null;s.chemistry=40;advance=false;narrative="A rescisão foi paga. Você está livre para escolher entre as propostas desta mesma janela.";}
-            case "life-brand" -> {int cash=success?400+s.followers/4:100;earn(s,cash);s.followers+=success?500:100;s.energy-=15;s.stress+=10;skill(s,"communication",1);narrative=success?"Sua presença fora do servidor rendeu dinheiro e novos seguidores. Você volta com menos energia para competir.":"A ação teve pouco alcance. Houve uma pequena renda, mas a agenda extra cobrou seu preço.";}
-            case "life-team" -> {s.chemistry+=12;skill(s,"communication",2);s.stress-=5;narrative="A conversa evitou ruídos. A equipe volta mais alinhada para a segunda etapa.";}
-            case "life-rest" -> {s.energy+=35;s.stress-=20;skill(s,"discipline",2);narrative="Você tirou a pressão dos ombros. O descanso devolveu energia para a próxima etapa.";}
-            case "year-develop","year-brand","year-rest","retire" -> {
-                if(choice.id().equals("year-develop")){Catalog.ATTRIBUTES.keySet().forEach(k->skill(s,k,2));s.energy=90;s.stress-=15;}
-                if(choice.id().equals("year-brand")){s.followers+=500;earn(s,700+s.followers/5);skill(s,"communication",2);s.energy=85;}
-                if(choice.id().equals("year-rest")){s.energy=100;s.stress-=35;skill(s,"composure",3);}
-                settle(s,1);
-                narrative="O balanço de "+s.year+" foi registrado no histórico. ";
-                if(s.age>=35||choice.id().equals("retire")){finishYear(s);s.ended=true;s.ending=s.titles>=5?"Uma carreira de lenda":s.reputation>=80?"Um nome que ficou no cenário":"Seu caminho no competitivo";heading="Carreira encerrada";narrative+="Você encerrou sua trajetória aos "+s.age+" anos, com "+s.wins+" vitórias e "+s.titles+" título(s). Seu legado está no histórico.";advance=false;}
-                else {finishYear(s);s.age++;s.year++;s.phase=0;s.seasonWins=0;s.seasonLosses=0;s.match=null;if(s.contract!=null&&s.contract.endYear()<s.year)s.contract=null;if(s.age>28)skill(s,"aim",-1);narrative+="Você completa "+s.age+" anos e entra em "+s.year+". "+(s.contract==null?"A próxima janela poderá trazer um novo escudo.":"Seu contrato com "+s.contract.name()+" segue em vigor.");advance=false;}
+        if("continue".equals(action.type())){require(s.outcome!=null,"Nenhum resultado pendente.");s.outcome=null;s.revision++;return;}
+        require(s.outcome==null,"Leia o resultado antes de fazer outra escolha.");require(!s.ended,"Sua carreira terminou. Comece outra história.");
+        var before=snapshot(s);String when=date(s);
+        if("invest".equals(action.type())){invest(s,action.target());normalize(s);record(s,"Investimento permanente",investmentNarrative(s,action.target()),"good",when,before,null);return;}
+        require("choice".equals(action.type()),"Ação inválida.");
+        var choice=scene(s).choices().stream().filter(c->c.id().equals(action.target())).findFirst().orElseThrow(()->new IllegalArgumentException("Escolha inválida para esta ocasião."));require(choice.available(),"Saldo insuficiente.");
+        boolean success=choice.chance()==100||random.nextInt(100)<choice.chance();String narrative,heading=choice.title(),tone=success?"good":"bad";boolean advance=true;GameState.MapStats mapStats=null;
+        String id=choice.id();
+        if(id.startsWith("card:")){
+            String selected=id.substring(5);require(s.pendingCards&&cardOffers(s).stream().anyMatch(c->c.id().equals(selected)),"Esta carta não está disponível.");var card=Catalog.CARDS.stream().filter(c->c.id().equals(selected)).findFirst().orElseThrow();permanent(s,card.bonuses());s.cardChanceBonus=Math.min(15,s.cardChanceBonus+1);s.cards.add(new GameState.SelectedCard(s.year,card.id(),card.name()));s.pendingCards=false;narrative="Carta adquirida: "+card.name()+". Os bônus são permanentes e as habilidades não caem com decisões ou idade. ";
+            if(s.age>=35||s.retiring){s.ended=true;s.ending=s.titles>=5?"Uma carreira de lenda":s.reputation>=80?"Um nome que ficou no cenário":"Seu caminho no competitivo";heading="Carreira encerrada";narrative+="Você encerrou sua trajetória aos "+s.age+" anos, com "+s.wins+" vitórias e "+s.titles+" título(s).";}
+            else{startYear(s);narrative+="Você completa "+s.age+" anos e entra em "+s.year+". "+(s.contract==null?"A próxima janela pode trazer outro escudo.":"Seu contrato com "+s.contract.name()+" segue em vigor.");}advance=false;
+        }else if(id.startsWith("life:")){
+            var option=Events.life(s).choices().stream().filter(o->("life:"+o.id()).equals(id)).findFirst().orElseThrow();if(success)option.bonuses().forEach((k,v)->skill(s,k,v));earn(s,success?option.cash():option.cash()/4);s.followers+=success?option.followers():option.followers()/4;s.chemistry+=success?option.chemistry():0;s.energy+=option.energy();s.stress+=option.stress()+(success?0:5);narrative=success?"A escolha trouxe o resultado esperado: "+option.description()+" Os ganhos de habilidade ficam com você.":"A situação não saiu como você esperava. Houve menos retorno e mais pressão, mas nenhuma habilidade ou OVR foi perdido.";
+        }else if(id.startsWith("match-")){
+            var m=matchFor(s);s.match=m;var play=Events.play(id);s.energy-=Math.max(0,play.energy()-s.investments.getOrDefault("nutrition",0));boolean reserve=Calendar.reserve(s);
+            if(success){m.roundsWon++;s.form+=4;s.reputation+=reserve?1:play.reputation();s.followers+=reserve?20:80;skill(s,play.attribute(),1);s.stress-=3;}else{s.form-=3;s.stress+=Math.max(1,5-s.investments.getOrDefault("psychology",0));}
+            if(play.attribute().equals("communication"))s.chemistry+=4;m.stage++;
+            narrative=success?"A decisão funcionou e o time levou o round-chave. ":"O rival respondeu melhor e levou o round-chave. Suas habilidades e OVR foram preservados. ";
+            if(m.stage<3){m.score=m.stage==1?(success?5:4):(m.roundsWon>=1?9:7);m.opponentScore=m.stage==1?(success?4:5):(m.roundsWon>=2?7:9);heading=success?"Round conquistado":"Round perdido";narrative+="O mapa continua: "+m.score+"–"+m.opponentScore+".";advance=false;}
+            else{boolean won=m.roundsWon>=2;int loser=m.roundsWon==3?8:m.roundsWon==2?11:m.roundsWon==1?10:8;m.score=won?13:loser;m.opponentScore=won?loser:13;heading=(won?"VITÓRIA ":"DERROTA ")+m.score+"–"+m.opponentScore;tone=won?"good":"bad";
+                if(!reserve){if(won){s.wins++;s.seasonWins++;s.reputation+=6;earn(s,250*Calendar.tier(s));}else{s.losses++;s.seasonLosses++;s.reputation++;}}
+                mapStats=mapStatistics(s,m,won);s.maps.add(0,mapStats);narrative+="Fim de "+m.map+": "+Catalog.team(s)+" "+m.score+" x "+m.opponentScore+" "+m.opponent+". ";
+                if(won&&Calendar.trophy(s)){s.titles++;s.trophies.add(new GameState.Trophy(s.year,m.competition,Catalog.team(s)));earn(s,(s.phase==10?15000:s.phase==4||s.phase==6?8000:3000)*Calendar.tier(s));narrative+="CAMPEÃO de "+m.competition+"! ";}
+                Calendar.qualification(s,won);if(won&&(s.phase==3&&s.qualifiedMasters1||s.phase==5&&s.qualifiedMasters2))narrative+="Você garantiu vaga no próximo Masters. ";if(s.phase==8&&s.qualifiedPlayoffs)narrative+="Vaga nos Playoffs do VCT garantida. ";if(s.phase==9&&s.qualifiedChampions)narrative+="Sua equipe se classificou para o Champions. ";
+                if(!reserve&&won&&mapStats.acs()>=260&&ratio(mapStats.kills(),mapStats.deaths())>=1.15){var award=new GameState.Award(s.year,"MVP — "+m.competition,"Mapa decisivo vencido com ACS ≥ 260 e K/D ≥ 1,15.");addAward(s,award);narrative+="Você recebeu o MVP desta decisão. ";}
+                if(reserve)narrative+="Scrim de avaliação: menor exposição, sem premiação nem troféu do circuito.";s.match=null;
             }
-            case "match-aggressive","match-control","match-support" -> {
-                GameState.Match m=matchFor(s);s.match=m;s.energy-=choice.id().equals("match-aggressive")?12:choice.id().equals("match-control")?8:5;
-                boolean reserve=s.contract!=null&&s.contract.position().equals("Reserva");
-                if(success){m.roundsWon++;s.form+=4;s.reputation+=reserve?1:choice.id().equals("match-aggressive")?4:2;s.followers+=reserve?20:80;skill(s,choice.attribute(),1);s.stress-=3;}else{s.form-=3;s.stress+=5;}
-                if(choice.id().equals("match-support"))s.chemistry+=4;
-                narrative=success?"A chamada funcionou: seu time levou o round-chave. ":"O adversário leu a jogada e levou o round-chave. ";
-                m.stage++;
-                if(m.stage<3){m.score=m.stage==1?(success?5:4):(m.roundsWon>=1?9:7);m.opponentScore=m.stage==1?(success?4:5):(m.roundsWon>=2?7:9);heading=success?"Round conquistado":"Round perdido";narrative+="O mapa continua. Placar na próxima ocasião: "+m.score+"–"+m.opponentScore+".";advance=false;}
-                else {boolean won=m.roundsWon>=2;int loser=m.roundsWon==3?8:m.roundsWon==2?11:m.roundsWon==1?10:8;m.score=won?13:loser;m.opponentScore=won?loser:13;
-                    heading=(won?"VITÓRIA ":"DERROTA ")+m.score+"–"+m.opponentScore;tone=won?"good":"bad";if(won){s.wins++;s.seasonWins++;s.reputation+=reserve?3:6;if(!reserve)earn(s,250*(s.contract==null?1:s.contract.tier()));}else{s.losses++;s.seasonLosses++;s.reputation+=1;}
-                    narrative+="Fim do mapa em "+m.map+": "+Catalog.team(s)+" "+m.score+" x "+m.opponentScore+" "+m.opponent+". ";
-                    if(oldPhase==6&&won&&m.finalEligible){s.titles++;String trophy=Catalog.circuit(s)+" "+s.year;s.trophies.add(new GameState.Trophy(s.year,trophy,Catalog.team(s)));earn(s,3000*(s.contract==null?1:s.contract.tier()));narrative+="CAMPEÃO! A temporada perfeita terminou com um troféu e premiação.";}else if(oldPhase==6)narrative+="A colocação foi registrada. A próxima temporada oferece outra chance.";
-                    if(s.contract!=null&&s.contract.position().equals("Reserva"))narrative+="Como reserva, seus mapas são scrims de avaliação; não valem troféu oficial do circuito.";
-                    s.match=null;
-                }
-            }
-            default -> {Catalog.Offer offer=Catalog.offers(s).stream().filter(o->o.id().equals(choice.id())).findFirst().orElseThrow();s.contract=new GameState.Contract(offer.orgId(),offer.name(),offer.tier(),offer.salary(),s.year+offer.years()-1,offer.position(),offer.pressure());s.chemistry=45;s.stress+=offer.pressure()/3;narrative="Você assinou com "+offer.name()+" como "+offer.position().toLowerCase()+" até dezembro de "+s.contract.endYear()+". O salário mensal é de R$ "+offer.salary()+". "+(offer.position().equals("Reserva")?"A renda é maior, mas sua exposição ficará nos scrims de avaliação.":"A vaga no quinteto abre espaço para disputar os próximos mapas.");}
+        }else switch(id){
+            case "prep-aim"->{skill(s,"aim",4);s.energy-=12;s.stress+=7;narrative="A mecânica evoluiu. O desgaste é temporário; a habilidade é permanente.";}
+            case "prep-study"->{skill(s,"tactics",3);skill(s,"discipline",3);s.energy+=10;s.stress-=5;narrative="A revisão de mapas trouxe leitura e disciplina para a temporada.";}
+            case "prep-team"->{skill(s,"communication",4);s.chemistry+=8;narrative="O grupo alinhou chamadas e execução.";}
+            case "prep-igl","become-igl"->{s.igl=true;skill(s,"communication",3);skill(s,"tactics",id.equals("prep-igl")?3:2);s.chemistry+=6;narrative="Você acumulou a liderança das chamadas. Decisões de IGL recebem um bônus específico de chance.";}
+            case "trial-highlight","trial-team","trial-vod"->{s.energy-=8;if(success){s.reputation+=id.equals("trial-highlight")?12:10;s.followers+=200;if(id.equals("trial-team"))s.chemistry+=8;skill(s,choice.attribute(),2);narrative="O teste chamou atenção positiva. Os olheiros passaram a acompanhar seu desenvolvimento.";}else{s.form-=4;s.stress+=6;narrative="O teste teve pontos a ajustar. A forma e o estresse mudaram, mas nenhum atributo ou OVR caiu.";}}
+            case "trial-steady"->{s.reputation+=4;skill(s,"discipline",2);s.stress-=5;narrative="A comissão reconheceu seus fundamentos. Um passo consistente rumo ao mercado.";}
+            case "free-agent"->{s.chemistry-=5;narrative="Você vai disputar o Premier com um mix, mantendo liberdade e sem salário fixo.";}
+            case "honor"->{s.chemistry+=10;skill(s,"composure",2);narrative="O vínculo foi mantido até "+s.contract.endYear()+", com mais confiança no coletivo.";}
+            case "renegotiate"->{if(success){var old=s.contract;s.contract=new GameState.Contract(old.orgId(),old.name(),old.tier(),old.salary()*115/100,old.endYear(),old.position(),old.pressure());narrative="A organização aceitou um aumento de 15%, sem mudar o prazo.";}else{s.stress+=8;narrative="O reajuste não foi aprovado. O vínculo continua; nenhuma habilidade foi perdida.";}}
+            case "release"->{s.money-=s.contract.salary()*2;s.contract=null;s.chemistry=40;advance=false;narrative="Rescisão paga. Você continua nesta janela para escolher outra proposta.";}
+            case "awards-team","awards-fans","awards-study"->{var awards=annualAwards(s);for(var award:awards)addAward(s,award);if(id.equals("awards-team"))s.chemistry+=8;if(id.equals("awards-fans"))s.followers+=400;if(id.equals("awards-study"))skill(s,"discipline",2);narrative=awards.isEmpty()?"Os números foram registrados. Esta temporada não trouxe um prêmio anual, mas sua evolução permanece.":"Prêmios registrados: "+String.join(" · ",awards.stream().map(GameState.Award::title).toList())+". Veja os critérios no histórico.";}
+            case "year-develop","year-brand","year-rest","retire"->{if(id.equals("year-develop")){Catalog.ATTRIBUTES.keySet().forEach(k->skill(s,k,2));s.energy=90;s.stress-=15;}if(id.equals("year-brand")){s.followers+=500;earn(s,700+s.followers/5);skill(s,"communication",2);s.energy=85;}if(id.equals("year-rest")){s.energy=100;s.stress-=35;skill(s,"composure",3);}settle(s,1);finishYear(s);s.retiring=id.equals("retire");s.pendingCards=true;advance=false;narrative="A temporada de "+s.year+" foi registrada. Agora escolha uma das três cartas de evolução permanente antes de "+(s.retiring||s.age>=35?"encerrar sua trajetória.":"começar o próximo ano.");}
+            default->{var offer=Catalog.offers(s).stream().filter(o->o.id().equals(id)).findFirst().orElseThrow(()->new IllegalArgumentException("Proposta inválida."));s.contract=new GameState.Contract(offer.orgId(),offer.name(),offer.tier(),offer.salary(),s.year+offer.years()-1,offer.position(),offer.pressure());s.chemistry=45;s.stress+=offer.pressure()/3;narrative="Você assinou com "+offer.name()+" como "+offer.position().toLowerCase()+" até dezembro de "+s.contract.endYear()+", por R$ "+offer.salary()+"/mês. "+(Calendar.reserve(s)?"Sua experiência será focada em scrims de avaliação.":"Seu calendário passa a seguir "+Catalog.circuit(s)+".");}
         }
-        if(advance)advance(s);
-        normalize(s);
-        var changes=changes(before,snapshot(s));s.outcome=new GameState.Outcome(heading,narrative,tone,when,changes);s.history.add(0,new GameState.History(when,heading,narrative,tone,changes));s.revision++;
+        if(advance)advance(s);normalize(s);record(s,heading,narrative,tone,when,before,mapStats);
     }
-    private void advance(GameState s) {
-        int months=Catalog.MONTH_START[s.phase+1]-Catalog.MONTH_START[s.phase];
-        settle(s,months);s.phase++;s.match=null;
+    private void invest(GameState s,String id){var item=Catalog.INVESTMENTS.stream().filter(i->i.id().equals(id)).findFirst().orElseThrow(()->new IllegalArgumentException("Investimento inválido."));int level=s.investments.getOrDefault(id,0);require(level<item.maxLevel(),"Este investimento já chegou ao nível máximo.");int price=item.price()*(level+1);require(s.money>=price,"Saldo insuficiente para este investimento.");s.money-=price;s.investments.put(id,level+1);permanent(s,item.bonuses());}
+    private String investmentNarrative(GameState s,String id){var item=Catalog.INVESTMENTS.stream().filter(i->i.id().equals(id)).findFirst().orElseThrow();return item.name()+" chegou ao nível "+s.investments.get(id)+". Os ganhos são permanentes. "+item.extra()+" Nenhum mês avançou.";}
+    private void record(GameState s,String title,String narrative,String tone,String when,Map<String,String> before,GameState.MapStats stats){var changes=changes(before,snapshot(s));s.outcome=new GameState.Outcome(title,narrative,tone,when,changes,stats);s.history.add(0,new GameState.History(when,title,narrative,tone,changes));s.revision++;}
+    private void advance(GameState s){settle(s,Catalog.MONTH_START[s.phase+1]-Catalog.MONTH_START[s.phase]);s.phase++;s.match=null;s.eventVariant=random.nextInt(100000);}
+    private void settle(GameState s,int months){if(s.contract!=null)earn(s,s.contract.salary()*months);s.money-=Math.min(s.money,(s.age<18?50:300)*months);s.energy+=(8+s.investments.getOrDefault("fitness",0))*months;s.stress+=months==0||s.contract==null?0:s.contract.pressure()/12;}
+    private void startYear(GameState s){s.age++;s.year++;s.phase=0;s.seasonWins=0;s.seasonLosses=0;s.match=null;s.qualifiedMasters1=false;s.qualifiedMasters2=false;s.qualifiedPlayoffs=false;s.qualifiedChampions=false;s.eventVariant=random.nextInt(100000);if(s.contract!=null&&s.contract.endYear()<s.year)s.contract=null;}
+    private GameState.Match matchFor(GameState s){if(s.match!=null)return s.match;var m=new GameState.Match();var candidates=Catalog.ORGS.stream().filter(o->o.tier()==Calendar.tier(s)&&o.region().equals(Calendar.region(s))&&!o.name().equals(Catalog.team(s))).toList();if(candidates.isEmpty())candidates=Catalog.ORGS.stream().filter(o->o.tier()==Calendar.tier(s)&&!o.name().equals(Catalog.team(s))).toList();m.opponent=candidates.isEmpty()?"Mix regional":candidates.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase),candidates.size())).name();m.map=Catalog.MAPS.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,"map"),Catalog.MAPS.size()));m.competition=Calendar.reserve(s)?"Scrim — "+Calendar.competition(s):Calendar.competition(s)+" — mapa decisivo";m.finalEligible=Calendar.trophy(s);return m;}
+    private GameState.MapStats mapStatistics(GameState s,GameState.Match m,boolean won){
+        int rounds=m.score+m.opponentScore,kills=0,deaths=0,assists=0,combat=0;var rng=new Random(Objects.hash(s.careerSeed,s.year,s.phase,m.map,m.roundsWon));
+        for(int r=0;r<rounds;r++){
+            double aimChance=Math.min(.9,.32+s.attributes.get("aim")*.004+(won?.05:0));int k=rng.nextDouble()<aimChance?1:0;if(k>0&&rng.nextDouble()<.16+s.attributes.get("aim")*.001)k++;if(k>1&&rng.nextDouble()<.08)k++;
+            int a=rng.nextDouble()<(.28+(s.role.equals("initiator")||s.role.equals("controller")?.15:0))?1:0;if(rng.nextDouble()<.08)a++;
+            if(rng.nextDouble()<.73-s.attributes.get("composure")*.003+(won?-.04:.04))deaths++;
+            int damage=Math.min(750,k*95+rng.nextInt(100));int roundScore=damage;for(int n=0;n<k;n++)roundScore+=150-20*Math.min(4,rng.nextInt(3)+n);roundScore+=Math.max(0,k-1)*50+a*25;
+            kills+=k;assists+=a;combat+=roundScore;
+        }
+        return new GameState.MapStats(s.year,s.phase,Calendar.competition(s),m.map,m.opponent,Catalog.team(s),won,m.score,m.opponentScore,kills,deaths,assists,combat,rounds,round1((double)combat/rounds),kd(kills,deaths),!Calendar.reserve(s));
     }
-    private void settle(GameState s,int months) {
-        if(s.contract!=null)earn(s,s.contract.salary()*months);
-        s.money-=Math.min(s.money,(s.age<18?50:300)*months);
-        s.energy+=8*months;s.stress+=s.contract==null?0:s.contract.pressure()/12;
-    }
-    private GameState.Match matchFor(GameState s) {
-        if(s.match!=null)return s.match;GameState.Match m=new GameState.Match();
-        var opponents=Catalog.ORGS.stream().filter(o->o.tier()==(s.contract==null?1:s.contract.tier())).toList();
-        int seed=Math.floorMod(Objects.hash(s.name,s.year,s.phase),opponents.size());var other=opponents.get(seed);
-        m.opponent=other.name().equals(Catalog.team(s))?"Vertex Five":other.name();m.map=Catalog.MAPS.get(Math.floorMod(s.year+s.phase,Catalog.MAPS.size()));
-        boolean reserve=s.contract!=null&&s.contract.position().equals("Reserva");m.finalEligible=s.phase==6&&s.seasonWins==2&&!reserve;
-        m.competition=reserve?"Scrim de avaliação":s.phase==6?(m.finalEligible?"Final — ":"Repescagem — ")+Catalog.circuit(s):"Etapa "+(s.phase==3?1:2)+" — "+Catalog.circuit(s);return m;
-    }
-    private void finishYear(GameState s) {s.seasons.add(0,new GameState.Season(s.year,s.age,Catalog.team(s),s.seasonWins,s.seasonLosses,(int)s.trophies.stream().filter(t->t.year()==s.year).count(),s.earnings-s.seasons.stream().mapToInt(GameState.Season::earnings).sum()));}
-    private void earn(GameState s,int amount){s.money+=amount;s.earnings+=amount;}
-    private void skill(GameState s,String key,int amount){s.attributes.compute(key,(k,v)->clamp(v+amount,1,99));}
+    public static Statistics statistics(List<GameState.MapStats> maps){int kills=maps.stream().mapToInt(GameState.MapStats::kills).sum(),deaths=maps.stream().mapToInt(GameState.MapStats::deaths).sum(),assists=maps.stream().mapToInt(GameState.MapStats::assists).sum(),rounds=maps.stream().mapToInt(GameState.MapStats::rounds).sum(),score=maps.stream().mapToInt(GameState.MapStats::combatScore).sum();return new Statistics(maps.size(),kills,deaths,assists,rounds,rounds==0?0:round1((double)score/rounds),kd(kills,deaths));}
+    private List<GameState.Award> annualAwards(GameState s){var stats=statistics(s.maps.stream().filter(m->m.official()&&m.year()==s.year).toList());var list=new ArrayList<GameState.Award>();if(stats.maps()>=2&&s.age<=18&&stats.acs()>=200)list.add(new GameState.Award(s.year,"Revelação do ano","Até 18 anos, ao menos 2 mapas oficiais e ACS ≥ 200."));if(stats.maps()>=3&&stats.acs()>=245&&ratio(stats.kills(),stats.deaths())>=1.15)list.add(new GameState.Award(s.year,"MVP da temporada","Ao menos 3 mapas, ACS ≥ 245 e K/D ≥ 1,15."));if(stats.maps()>=3&&s.igl&&s.seasonWins>=3&&s.attributes.get("communication")>=55)list.add(new GameState.Award(s.year,"IGL do ano","IGL, comunicação ≥ 55, ao menos 3 mapas e 3 vitórias."));if(stats.maps()>=3&&stats.kills()>=80&&ratio(stats.kills(),stats.deaths())>=1.2)list.add(new GameState.Award(s.year,"Destaque da função — "+Catalog.role(s.role).name(),"Ao menos 3 mapas, 80 abates e K/D ≥ 1,20."));return list;}
+    private void addAward(GameState s,GameState.Award award){if(s.awards.stream().noneMatch(a->a.year()==award.year()&&a.title().equals(award.title()))){s.awards.add(0,award);s.reputation+=3;s.followers+=250;}}
+    private List<CalendarEntry> calendar(GameState s){var entries=new ArrayList<CalendarEntry>();int current=s.phase;for(int i=0;i<Catalog.PHASES.size();i++){String name=Catalog.PHASES.get(i);if(Set.of(3,4,5,6,8,9,10).contains(i)){var shadow=new GameState();shadow.contract=s.contract;shadow.nationality=s.nationality;shadow.year=s.year;shadow.phase=i;name=Calendar.competition(shadow);}String status=i<current?"Concluído":i==current?"Atual":"A seguir";if(i>=current&&(i==4||i==6||i==9||i==10)){boolean eligible=switch(i){case 4->s.qualifiedMasters1;case 6->s.qualifiedMasters2;case 9->s.qualifiedPlayoffs||Calendar.tier(s)==1&&!Calendar.academy(s);default->s.qualifiedChampions;};int qualifier=i==4?3:i==6?5:i==9?8:9;status=eligible?"Classificado":current>qualifier?"Sem vaga":"Depende de classificação";}entries.add(new CalendarEntry(i,name,Catalog.MONTHS.get(i),status));}return List.copyOf(entries);}
+    private void finishYear(GameState s){s.seasons.add(0,new GameState.Season(s.year,s.age,Catalog.team(s),s.seasonWins,s.seasonLosses,(int)s.trophies.stream().filter(t->t.year()==s.year).count(),s.earnings-s.seasons.stream().mapToInt(GameState.Season::earnings).sum()));}
+    private void earn(GameState s,int amount){s.money+=Math.max(0,amount);s.earnings+=Math.max(0,amount);}
+    private void skill(GameState s,String key,int amount){s.attributes.compute(key,(k,v)->Math.min(99,v+growth(s,amount)));}
     private void normalize(GameState s){s.energy=clamp(s.energy,0,100);s.form=clamp(s.form,0,100);s.stress=clamp(s.stress,0,100);s.chemistry=clamp(s.chemistry,0,100);s.reputation=clamp(s.reputation,0,200);s.money=Math.max(0,s.money);}
-    private boolean isMatch(GameState s){return s.phase==3||s.phase==5||s.phase==6;}
     private String date(GameState s){return Catalog.MONTHS.get(s.phase)+" de "+s.year+" · "+s.age+" anos";}
-    private Map<String,String> snapshot(GameState s){var m=new LinkedHashMap<String,String>();m.put("Saldo","R$ "+s.money);m.put("Energia",""+s.energy);m.put("Forma",""+s.form);m.put("Estresse",""+s.stress);m.put("Química",""+s.chemistry);m.put("Reputação",""+s.reputation);m.put("Seguidores",""+s.followers);Catalog.ATTRIBUTES.forEach((k,v)->m.put(v,""+s.attributes.get(k)));m.put("Organização",Catalog.team(s));m.put("Salário mensal",s.contract==null?"Sem salário":"R$ "+s.contract.salary());m.put("Títulos",""+s.titles);m.put("Vitórias",""+s.wins);m.put("Derrotas",""+s.losses);m.put("Idade",""+s.age);m.put("Temporada",""+s.year);return m;}
-    private List<GameState.Change> changes(Map<String,String>a,Map<String,String>b){var list=new ArrayList<GameState.Change>();a.forEach((k,v)->{if(!v.equals(b.get(k)))list.add(new GameState.Change(k,v,b.get(k)));});return List.copyOf(list);}
-    private static int clamp(int value,int min,int max){return Math.max(min,Math.min(max,value));}
+    private Map<String,String> snapshot(GameState s){var m=new LinkedHashMap<String,String>();m.put("Saldo","R$ "+s.money);m.put("Energia",""+s.energy);m.put("Forma",""+s.form);m.put("Estresse",""+s.stress);m.put("Química",""+s.chemistry);m.put("Reputação",""+s.reputation);m.put("Seguidores",""+s.followers);Catalog.ATTRIBUTES.forEach((k,v)->m.put(v,""+s.attributes.get(k)));m.put("Organização",Catalog.team(s));m.put("Salário mensal",s.contract==null?"Sem salário":"R$ "+s.contract.salary());m.put("Títulos",""+s.titles);m.put("Vitórias",""+s.wins);m.put("Derrotas",""+s.losses);m.put("Prêmios individuais",""+s.awards.size());m.put("Bônus de chance permanente",s.cardChanceBonus+"%");m.put("IGL",s.igl?"Sim":"Não");m.put("Idade",""+s.age);m.put("Temporada",""+s.year);return m;}
+    private List<GameState.Change> changes(Map<String,String> a,Map<String,String> b){var list=new ArrayList<GameState.Change>();a.forEach((key,value)->{if(!value.equals(b.get(key)))list.add(new GameState.Change(key,value,b.get(key)));});return List.copyOf(list);}
+    private static int clamp(int n,int min,int max){return Math.max(min,Math.min(max,n));}
+    private static double ratio(int kills,int deaths){return (double)kills/Math.max(1,deaths);}
+    private static String kd(int kills,int deaths){return deaths==0?(kills==0?"0.00":"∞"):String.format(Locale.ROOT,"%.2f",(double)kills/deaths);}
+    private static double round1(double value){return Math.round(value*10.0)/10.0;}
     private static void require(boolean condition,String message){if(!condition)throw new IllegalArgumentException(message);}
 }

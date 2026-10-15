@@ -37,3 +37,4 @@ def download(team):
  except Exception as error: return str(error)
 with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
  for result in pool.map(download,teams.values()): print(result)
+

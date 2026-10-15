@@ -1,78 +1,39 @@
 package br.com.chromeprotocol;
-
 import java.util.*;
-
-/** Domain regressions, runnable without Spring or Maven. */
+/** Domain regressions runnable without Spring. */
 public final class EngineChecks {
-    static int assertions;
-    static final GameEngine win=new GameEngine(new Random(1){@Override public int nextInt(int bound){return 0;}});
-    static final GameEngine lose=new GameEngine(new Random(1){@Override public int nextInt(int bound){return bound-1;}});
-    static GameState fresh(){return win.create("Nova","BR","duelist","ranked","Jett",null);}
-    static void check(boolean condition,String message){assertions++;if(!condition)throw new AssertionError(message);}
-    static void rejects(Runnable r,String message){assertions++;try{r.run();}catch(IllegalArgumentException expected){return;}throw new AssertionError(message);}
-    static void choose(GameEngine e,GameState s,String target){e.act(s,new GameEngine.Action("choice",target,s.revision));}
-    static void ack(GameEngine e,GameState s){e.act(s,new GameEngine.Action("continue","",s.revision));}
-    static void step(GameEngine e,GameState s,String target){choose(e,s,target);ack(e,s);}
-    public static void run(){
-        assertions=0;
-        for(var country:Catalog.COUNTRIES)for(var role:Catalog.ROLES){GameState s=win.create("A",country.id(),role.id(),"school",role.agents().get(0),null);check(s.age==15&&s.year==2026&&s.attributes.size()==5,"All country and role combinations");}
-        rejects(()->win.create("","BR","duelist","ranked","Jett",null),"Empty nick");
-        rejects(()->win.create("A","XX","duelist","ranked","Jett",null),"Country whitelist");
-        rejects(()->win.create("A","BR","bad","ranked","Jett",null),"Role whitelist");
-        rejects(()->win.create("A","BR","duelist","bad","Jett",null),"Background whitelist");
-        rejects(()->win.create("A","BR","duelist","ranked","Sage",null),"Role agent mismatch");
-        GameState s=fresh();choose(win,s,"prep-aim");
-        check(s.phase==1&&s.outcome!=null&&s.attributes.get("aim")==46,"Choice progresses and exposes immediate consequences");
-        check(s.outcome.changes().stream().anyMatch(c->c.label().equals("Mira")),"Outcome contains actual attribute delta");
-        rejects(()->choose(win,s,"trial-steady"),"Must acknowledge before next decision");
-        rejects(()->win.act(s,new GameEngine.Action("continue","",0)),"Stale acknowledgement rejected");ack(win,s);
-        check(s.outcome==null,"Acknowledgement clears result");
-        step(win,s,"trial-steady");check(win.view(s).offers().size()==3,"Three contract offers");
-        int salary=win.view(s).offers().get(1).salary();step(win,s,"offer-1");
-        check(s.contract!=null&&s.contract.endYear()==2027&&s.contract.salary()==salary,"Two season agreement persisted");
-        choose(win,s,"match-support");check(s.match.stage==1&&s.phase==3&&s.outcome.title().contains("Round"),"First key round is not a whole map");ack(win,s);
-        step(win,s,"match-support");step(win,s,"match-support");check(s.wins==1&&s.phase==4&&s.match==null,"Three key rounds resolve a map");
-        GameState bad=fresh();bad.phase=3;for(int i=0;i<3;i++)step(lose,bad,"match-aggressive");check(bad.losses==1&&bad.phase==4&&bad.money>=0,"Failures continue career");
-        GameState appearance=fresh();var custom=new Appearance("soft","ebony","braids","cyan","natural","nomad","magenta");win.customize(appearance,custom,0);check(appearance.appearance.equals(custom)&&appearance.age==15&&appearance.money==500,"Cosmetics preserve career");
-        rejects(()->win.customize(appearance,custom,0),"Stale appearance edit rejected");
-        GameState release=fresh();release.phase=2;release.contract=new GameState.Contract("aurora","Aurora Academy",1,500,2028,"Titular",12);release.money=999;rejects(()->choose(win,release,"release"),"Cannot pay unaffordable release");release.money=1000;step(win,release,"release");check(release.contract==null&&release.phase==2&&release.money==0,"Release stays in window and charges exact fee");
-        GameState elite=fresh();elite.age=18;elite.year=2029;elite.reputation=80;elite.attributes.replaceAll((k,v)->60);elite.phase=2;check(win.view(elite).offers().stream().allMatch(o->o.tier()==3),"Elite opportunities depend on age reputation and skills");elite.age=15;check(Catalog.offers(elite).stream().allMatch(o->o.tier()==1),"Start at academy circuit");
-        GameState reserve=fresh();reserve.phase=3;reserve.contract=new GameState.Contract("aurora","Aurora Academy",1,500,2028,"Reserva",12);check(win.view(reserve).scene().title().contains("Scrim"),"Reserve plays evaluations");
-        GameState stable=fresh();stable.phase=2;var first=win.view(stable).offers();check(first.equals(win.view(stable).offers()),"GET does not reroll market");
-        for(GameEngine engine:List.of(win,lose)){
-            GameState career=fresh();int decisions=0;
-            while(!career.ended){
-                var choices=engine.view(career).scene().choices();String target;
-                if(career.phase==2)target=career.contract==null?"offer-0":"honor";
-                else if(career.phase==7)target="year-develop";
-                else if(career.phase==4)target="life-rest";
-                else if(career.phase==1)target="trial-steady";
-                else target=choices.get(0).id();
-                step(engine,career,target);decisions++;
-                check(career.energy>=0&&career.energy<=100&&career.stress>=0&&career.stress<=100&&career.money>=0,"Career resource bounds");
-                check(decisions<400,"Career must terminate");
-            }
-            check(career.age==35&&career.year==2046&&career.seasons.size()==21,"Full 21-year career 15–35");
-            check(career.wins+career.losses==63,"Three maps per season");
-            check(career.titles==(engine==win?21:0),"Final qualification and titles reflect earlier maps");
-            check(career.earnings==career.seasons.stream().mapToInt(GameState.Season::earnings).sum(),"Annual income balances lifetime earnings");
-            rejects(()->choose(engine,career,"prep-aim"),"Ended career cannot advance");
-        }
-        GameState early=fresh();early.age=23;early.phase=7;step(win,early,"retire");check(early.ended&&early.age==23,"Optional retirement");
-        for(int pattern=0;pattern<8;pattern++){
-            final int mask=pattern;GameEngine scripted=new GameEngine(new Random(1){int i;@Override public int nextInt(int bound){return ((mask>>i++)&1)==1?0:bound-1;}});
-            GameState rounds=fresh();rounds.phase=3;int previous=4,other=4;GameState.Match tracked=null;
-            for(int i=0;i<3;i++){
-                choose(scripted,rounds,"match-support");if(rounds.match!=null)tracked=rounds.match;
-                check(tracked.score>=previous&&tracked.opponentScore>=other,"Score never decreases between key rounds");
-                previous=tracked.score;other=tracked.opponentScore;ack(scripted,rounds);
-            }
-        }
-        GameState bench=fresh();bench.phase=3;bench.contract=new GameState.Contract("aurora","Aurora Academy",1,500,2028,"Reserva",12);
-        for(int i=0;i<3;i++)step(win,bench,"match-support");
-        check(bench.followers==160&&bench.earnings==1500,"Reserve earns salary with lower exposure and no match prize");
-        GameState unqualified=fresh();unqualified.phase=6;for(int i=0;i<3;i++)step(win,unqualified,"match-support");check(unqualified.titles==0,"Winning repescagem does not award a title");
-        System.out.println("Domain checks: "+assertions+" passed, 0 failures.");
-    }
-    public static void main(String[] args){run();}
+ static int assertions;
+ static final GameEngine win=new GameEngine(new Random(1){@Override public int nextInt(int bound){return 0;}});
+ static final GameEngine lose=new GameEngine(new Random(1){@Override public int nextInt(int bound){return bound-1;}});
+ static GameState fresh(){return win.create("Nova","BR","duelist","ranked","Jett",null);}
+ static void check(boolean c,String m){assertions++;if(!c)throw new AssertionError(m);}
+ static void rejects(Runnable r,String m){assertions++;try{r.run();}catch(IllegalArgumentException e){return;}throw new AssertionError(m);}
+ static void choose(GameEngine e,GameState s,String id){e.act(s,new GameEngine.Action("choice",id,s.revision));}
+ static void ack(GameEngine e,GameState s){e.act(s,new GameEngine.Action("continue","",s.revision));}
+ static void step(GameEngine e,GameState s,String id){choose(e,s,id);ack(e,s);}
+ static void map(GameEngine e,GameState s){for(int i=0;i<3;i++)step(e,s,e.view(s).scene().choices().get(0).id());}
+ public static void run(){assertions=0;
+  for(var c:Catalog.COUNTRIES)for(var r:Catalog.ROLES)for(var a:Catalog.AGENTS){var s=win.create("A",c.id(),r.id(),"school",a.name(),null,"standard",true,List.of(a.name(),"Jett"));check(s.igl&&s.favoriteAgents.contains(a.name())&&s.age==15,"Every agent independent of role and nationality");}
+  check(Catalog.AGENTS.size()==29,"All 29 reference agents");check(Catalog.ORGS.stream().filter(o->o.tier()==3).count()==48,"48 official VCT teams");
+  rejects(()->win.create("","BR","duelist","ranked","Jett",null),"Empty name");rejects(()->win.create("A","BR","duelist","ranked","Fake",null),"Unknown agent");rejects(()->win.create("A","BR","duelist","ranked","Jett",null,"cheat",false,List.of()),"Unknown mode");
+  var normal=fresh();var boosted=win.create("Nova","BR","duelist","ranked","Jett",null,"prodigy",true,List.of("Veto","Miks"));check(boosted.attributes.get("aim")==normal.attributes.get("aim")+20,"Boost starting aim");check(boosted.favoriteAgents.containsAll(List.of("Jett","Veto","Miks")),"Primary included in favorites");
+  step(win,normal,"prep-aim");step(win,boosted,"prep-aim");check(boosted.attributes.get("aim")-normal.attributes.get("aim")==22,"50 percent positive growth");
+  var s=fresh();choose(win,s,"prep-aim");check(s.phase==1&&s.outcome!=null,"Immediate persisted result");rejects(()->choose(win,s,"trial-steady"),"Result gate");rejects(()->win.act(s,new GameEngine.Action("continue","",0)),"Revision gate");ack(win,s);step(win,s,"trial-steady");check(win.view(s).offers().size()==3,"Three offers");step(win,s,"offer-0");check(s.contract!=null,"Contract accepted");
+  var investor=fresh();investor.money=100000;int phase=investor.phase,aim=investor.attributes.get("aim");var shown=win.view(investor).investments().get(0);win.act(investor,new GameEngine.Action("invest",shown.item().id(),investor.revision));check(investor.phase==phase&&investor.money==100000-shown.price(),"Investment exact cost and no time");check(investor.attributes.get("aim")==aim+shown.gains().get("aim"),"Preview equals gain");check(investor.permanentBonuses.get("aim")==shown.gains().get("aim"),"Permanent bonus recorded");ack(win,investor);
+  for(var item:Catalog.INVESTMENTS){for(int level=investor.investments.getOrDefault(item.id(),0);level<item.maxLevel();level++){investor.money=100000;win.act(investor,new GameEngine.Action("invest",item.id(),investor.revision));ack(win,investor);}rejects(()->win.act(investor,new GameEngine.Action("invest",item.id(),investor.revision)),"Maximum investment level enforced");}
+  var poor=fresh();rejects(()->win.act(poor,new GameEngine.Action("invest","pc",0)),"Insufficient balance");check(poor.money==500&&poor.revision==0,"Rejected purchase unchanged");
+  var cards=fresh();cards.phase=12;choose(win,cards,"year-develop");check(cards.seasons.size()==1&&cards.pendingCards&&cards.age==15,"Year recorded once before cards");ack(win,cards);var offers=win.view(cards).cards();check(offers.size()==3&&offers.equals(win.view(cards).cards())&&offers.stream().map(GameEngine.CardView::id).distinct().count()==3,"Stable three unique cards");var chosen=offers.get(0);var before=new LinkedHashMap<>(cards.attributes);choose(win,cards,"card:"+chosen.id());check(cards.cards.size()==1&&cards.year==2027&&cards.age==16&&!cards.pendingCards,"Exactly one card and one year advance");for(var e:chosen.gains().entrySet())check(cards.attributes.get(e.getKey())==before.get(e.getKey())+e.getValue(),"Card preview exact");ack(win,cards);rejects(()->choose(win,cards,"card:"+chosen.id()),"Cannot replay card");
+  boosted.phase=12;step(win,boosted,"year-rest");check(win.view(boosted).cards().stream().anyMatch(c->c.id().equals("phenom")),"Boost legendary choice");
+  var elite=fresh();elite.age=18;elite.attributes.replaceAll((k,v)->70);elite.reputation=80;elite.contract=new GameState.Contract("furia","FURIA",3,5000,2028,"Titular",12);elite.phase=3;map(win,elite);check(elite.qualifiedMasters1&&elite.phase==4&&Calendar.match(elite),"Kickoff qualifies Masters");check(elite.maps.size()==1&&elite.outcome==null,"One map record");var stat=elite.maps.get(0);check(stat.rounds()==stat.score()+stat.opponentScore()&&stat.deaths()<=stat.rounds(),"Plausible map rounds and deaths");check(stat.acs()==Math.round((double)stat.combatScore()/stat.rounds()*10)/10.0,"ACS from combat score and rounds");check(win.view(elite).statistics().kills()==stat.kills(),"Lifetime aggregation");map(win,elite);elite.phase=5;map(win,elite);check(elite.qualifiedMasters2,"Stage1 qualifies second Masters");elite.phase=8;map(win,elite);check(elite.qualifiedPlayoffs,"Stage2 qualifies playoffs");elite.phase=9;map(win,elite);check(elite.qualifiedChampions,"Playoffs qualify Champions");elite.phase=10;map(win,elite);check(elite.trophies.stream().anyMatch(t->t.name().contains("Champions")),"Champions trophy");
+  int allCombat=elite.maps.stream().mapToInt(GameState.MapStats::combatScore).sum(),allRounds=elite.maps.stream().mapToInt(GameState.MapStats::rounds).sum();check(win.view(elite).statistics().acs()==Math.round((double)allCombat/allRounds*10)/10.0,"Weighted ACS");
+  elite.phase=11;step(win,elite,"awards-team");check(elite.awards.stream().anyMatch(a->a.title().contains("Revelação")),"Annual awards derived from stats");
+  var academy=fresh();academy.contract=new GameState.Contract("furia-academy","FURIA Academy",1,500,2028,"Titular",5);check(Calendar.challengers(academy).contains("Brazil"),"Academy belongs to Brazilian circuit");academy.nationality="CN";check(Calendar.challengers(academy).contains("Brazil"),"Team home circuit independent of player nationality");academy.phase=8;map(win,academy);check(!academy.qualifiedPlayoffs&&!academy.qualifiedChampions,"Academy no VCT pathway");
+  var reserve=fresh();reserve.phase=3;reserve.contract=new GameState.Contract("furia","FURIA",3,5000,2028,"Reserva",12);map(win,reserve);check(reserve.wins==0&&reserve.titles==0&&!reserve.maps.get(0).official()&&win.view(reserve).statistics().maps()==0&&!reserve.qualifiedMasters1,"Scrims excluded from official stats qualifications and trophies");
+  var loss=fresh();loss.phase=3;var prior=new LinkedHashMap<>(loss.attributes);map(lose,loss);check(loss.losses==1&&loss.attributes.equals(prior),"Failures never reduce attributes");
+  for(var engine:List.of(win,lose)){var career=fresh();int decisions=0;while(!career.ended){var old=new LinkedHashMap<>(career.attributes);var choices=engine.view(career).scene().choices();String id=career.pendingCards?choices.get(0).id():career.phase==2?(career.contract==null?"offer-0":"honor"):career.phase==12?"year-develop":choices.get(0).id();step(engine,career,id);for(var entry:old.entrySet())check(career.attributes.get(entry.getKey())>=entry.getValue(),"Skills never fall across full career");check(career.money>=0&&career.energy>=0&&career.energy<=100&&career.stress>=0&&career.stress<=100,"Resource bounds");check(++decisions<1500,"Career terminates");}check(career.age==35&&career.seasons.size()==21&&career.cards.size()==21,"21 years 21 rewards");check(career.earnings==career.seasons.stream().mapToInt(GameState.Season::earnings).sum(),"Income reconciliation");rejects(()->choose(engine,career,"prep-aim"),"Ended career gated");}
+  var retire=fresh();retire.age=23;retire.phase=12;step(win,retire,"retire");step(win,retire,win.view(retire).scene().choices().get(0).id());check(retire.ended&&retire.age==23,"Retirement after final card");
+  var release=fresh();release.phase=2;release.contract=new GameState.Contract("furia","FURIA",3,500,2028,"Titular",12);release.money=999;rejects(()->choose(win,release,"release"),"Cannot afford release");release.money=1000;step(win,release,"release");check(release.contract==null&&release.phase==2&&release.money==0,"Release exact cost");
+  System.out.println("Domain checks: "+assertions+" passed, 0 failures.");
+ }
+ public static void main(String[] args){run();}
 }

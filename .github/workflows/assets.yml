@@ -18,3 +18,4 @@ jobs:
           name: reference-assets
           path: target/reference-assets/
           retention-days: 3
+
