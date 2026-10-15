@@ -19,8 +19,8 @@ public class CareerService {
         return id == null ? null : repository.findById(id).filter(c -> isCurrent(c.state)).map(c -> engine.view(decode(c.state))).orElse(null);
     }
     @Transactional
-    public Created create(String name, String nationality, String role, String background, String agent, Appearance appearance, UUID previousId) {
-        GameState state = engine.create(name, nationality, role, background, agent, appearance);
+    public Created create(String name, String nationality, String role, String background, String agent, Appearance appearance, String mode, boolean igl, java.util.List<String> favorites, UUID previousId) {
+        GameState state = engine.create(name, nationality, role, background, agent, appearance, mode, igl, favorites);
         UUID id = UUID.randomUUID(); Career career = new Career(id, encode(state));
         if (legacy(previousId)) career.archivedCareerId = previousId;
         repository.save(career);
@@ -33,10 +33,10 @@ public class CareerService {
         return engine.view(state);
     }
     @Transactional
-    public GameEngine.View restart(UUID id, int revision, String name, String nationality, String role, String background, String agent, Appearance appearance) {
+    public GameEngine.View restart(UUID id, int revision, String name, String nationality, String role, String background, String agent, Appearance appearance, String mode, boolean igl, java.util.List<String> favorites) {
         Career career = load(id); GameState old = decode(career.state);
         if (old.revision != revision) throw new IllegalArgumentException("Sua carreira mudou. Atualize antes de reiniciar.");
-        GameState state = engine.create(name, nationality, role, background, agent, appearance); state.revision = old.revision + 1;
+        GameState state = engine.create(name, nationality, role, background, agent, appearance, mode, igl, favorites); state.revision = old.revision + 1;
         career.state = encode(state); return engine.view(state);
     }
     @Transactional
@@ -74,7 +74,20 @@ public class CareerService {
     private GameState decode(String state) {
         try {
             if (!isCurrent(state)) throw new IllegalArgumentException("Crie uma carreira de Valorant para continuar.");
-            return mapper.readValue(state, GameState.class);
+            GameState game = mapper.readValue(state, GameState.class);
+            if (mapper.readTree(state).path("rulesVersion").asInt(1) < 2) {
+                int[] phases = {0,1,2,5,7,8,9,12};
+                game.phase = phases[Math.min(7, Math.max(0,game.phase))];
+                game.rulesVersion = 2;
+                if(game.phase==9 && game.match!=null && game.contract!=null && game.contract.tier()>=2) game.qualifiedPlayoffs=true;
+                if(game.match != null) {
+                    game.match.competition = Calendar.competition(game) + " — mapa em andamento";
+                    game.match.finalEligible = Calendar.trophy(game);
+                }
+            }
+            if(game.favoriteAgents == null || game.favoriteAgents.isEmpty()) game.favoriteAgents = new java.util.ArrayList<>(java.util.List.of(game.agent));
+            if(game.developmentMode == null) game.developmentMode = "standard";
+            return game;
         }
         catch (JsonProcessingException e) { throw new IllegalStateException("Falha ao ler carreira", e); }
     }

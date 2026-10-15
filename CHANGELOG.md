@@ -2,6 +2,27 @@
 
 Todas as alterações do ChromeProtocol são registradas aqui.
 
+## [1.1.0] — 2026-10-15
+
+### Adicionado
+- Modo opcional Talento da geração, IGL independente e pool de todos os 29 agentes oficiais de referência.
+- Três cartas anuais estáveis para escolher um bônus permanente; coleção e garantia de carta lendária no modo talento.
+- Dez investimentos permanentes em treinos, coach, nutrição, psicologia, idiomas, preparo físico e equipamentos, com níveis, preços e ganhos visíveis.
+- 48 organizações oficiais do VCT com logos PNG locais e equipes brasileiras de desenvolvimento; script e workflow de atualização de referências.
+- Agenda de 13 fases: Kickoff, Masters Santiago/London, Stage 1/2, playoffs, Champions Shanghai, VCB/Challengers e Premier, conforme elegibilidade da equipe.
+- Eventos de temporada e rounds variados, com situações inesperadas, liderança, mídia, patrocínio e vida pessoal.
+- Estatísticas persistentes por mapa: kills, mortes, assistências, KD, rounds, combatScore e ACS ponderado; números da carreira e temporada separados de scrims.
+- Prêmios individuais calculados por desempenho, sala de prêmios e critérios públicos.
+- Abas Evolução, Calendário e Estatísticas e botão Nova carreira no topo, com confirmação, exportação e cancelamento sem perda de progresso.
+- Migração dos saves 1.0.0 preservando carreira e partidas em andamento, sem fabricar estatísticas antigas.
+- Testes de temporadas completas, progressão monotônica, cartas únicas, compras, elegibilidade, estatísticas, migração, reset e navegador desktop/mobile.
+
+### Alterado
+- OVR e habilidades nunca diminuem por escolhas, falhas ou idade. Energia, forma, estresse, relações e recursos permanecem dinâmicos.
+- Interface mostra ganhos permanentes antes de compras/cartas, logos reais, agenda e estatísticas no resultado imediato do mapa.
+- Calendário ancorado em 2026 e adaptado nos anos seguintes; regulamento, propostas e partidas continuam simplificações da simulação.
+- Versão, pacote, Docker, workflow e documentação atualizados para 1.1.0.
+
 ## [1.0.0] — 2026-10-15
 
 ### Alterado
