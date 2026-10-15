@@ -131,4 +131,13 @@ class GameApiTest {
         var initial=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andExpect(jsonPath("$.game.activeMatch.stage").value(2)).andReturn().getResponse().getContentAsString()).path("game");assertEquals(0,initial.path("character").path("series").size());String choice=initial.path("scene").path("choices").get(0).path("id").asText();var completed=action(cookie,"choice",choice,0).path("character");assertEquals(8,completed.path("wins").asInt());assertEquals(0,completed.path("series").size());assertTrue(completed.path("maps").get(0).path("seriesId").isNull());assertEquals(4,completed.path("phase").asInt());
     }
 
+    @Test void seasonModeSimulatesBetweenMeaningfulDecisionsAndPersists() throws Exception {
+        String body=NEW.substring(0,NEW.length()-1)+",\"pace\":\"season\",\"appearance\":{\"hair\":\"curly\",\"beard\":\"goatee\",\"eyeColor\":\"green\",\"eyewear\":\"round\",\"headwear\":\"headset\",\"jerseyPattern\":\"stripes\"}}";
+        var cookie=mvc.perform(post("/api/game").with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.scene.choices[0].id").value("season-focus:aim")).andExpect(jsonPath("$.character.appearance.headwear").value("headset")).andReturn().getResponse().getCookie("CP_CAREER");
+        action(cookie,"choice","season-focus:aim",0);action(cookie,"continue","",1);var first=action(cookie,"choice","offer-0",2);assertEquals(7,first.path("character").path("phase").asInt());assertEquals(16,first.path("character").path("series").size());assertEquals(16,first.path("character").path("outcome").path("seriesResults").size());
+        var saved=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andReturn().getResponse().getContentAsString()).path("game");assertEquals(first.path("character"),saved.path("character"));var event=action(cookie,"continue","",3);String id=event.path("scene").path("choices").get(0).path("id").asText();var end=action(cookie,"choice",id,4);assertTrue(end.path("character").path("pendingCards").asBoolean());assertEquals(26,end.path("character").path("series").size());assertEquals(1,end.path("character").path("seasons").size());assertEquals(2026,end.path("character").path("year").asInt());
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action("choice",id,4)))).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.seasons.length()").value(1)).andExpect(jsonPath("$.game.character.appearance.eyewear").value("round"));
+    }
+
 }

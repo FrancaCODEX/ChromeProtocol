@@ -2,6 +2,21 @@
 
 Todas as alterações do ChromeProtocol são registradas aqui.
 
+## [1.4.0] — 2026-10-15
+
+### Adicionado
+- Ritmo Temporada automática, padrão no formulário: escolher foco, contrato/time, um acontecimento importante e carta anual. Todas as séries são simuladas automaticamente entre essas pausas.
+- Balanço, premiações, salários/despesas e avaliação de objetivo automáticos, com gravação atômica e todos os mapas preservados; sem botões de avançar série ou confirmação de resultado na interface automática.
+- Painel de escolhas ao lado do histórico anual, com logos, OVR, ACS, K/D, kills, campanha e troféus agrupados; consequências ficam no painel sem interromper a próxima escolha.
+- Personalização em abas Rosto/Cabelo/Estilo, com miniaturas: nove cabelos, oito cores de cabelo, cinco barbas, cinco cores de olhos, óculos e acessórios de cabeça independentes, sete cores de uniforme e três estampas de jersey.
+- Compatibilidade com os campos cosméticos antigos, tradução de óculos/headset e validação de todos os novos tokens no servidor.
+- Testes de carreira automática completa com vitórias e derrotas, limite de quatro escolhas por ano, pagamentos únicos, pausas em contratos/cartas, persistência e edição cosmética sem mudar atributos.
+
+### Alterado
+- Ritmo automático substitui a antiga opção Run no formulário e no seletor; saves `run` em blocos continuam funcionando.
+- OVR incluído nas consequências e mostrado no painel compacto. Modos detalhado e Talento da geração preservados.
+- Pacote, Docker, CI, README e exportação atualizados para 1.4.0.
+
 ## [1.3.0] — 2026-10-15
 
 ### Adicionado
