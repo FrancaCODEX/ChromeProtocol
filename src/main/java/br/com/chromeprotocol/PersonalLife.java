@@ -26,7 +26,7 @@ public final class PersonalLife {
   new Goal("community","Uma comunidade comigo","Conquistar mais 1.500 seguidores após escolher a meta.",1500,1500,Catalog.bonus("composure",2))
  );
  public static String slot(GameState s){return s.year+":"+s.phase;}
- public static boolean available(GameState s){return !s.ended&&!s.pendingCards&&s.outcome==null&&s.match==null&&!s.activitySlots.contains(slot(s));}
+ public static boolean available(GameState s){return !s.ended&&!s.pendingCards&&s.outcome==null&&s.match==null&&!s.tourEvent&&!s.activitySlots.contains(slot(s));}
  public static List<Activity> activities(GameState s){var pool=new ArrayList<>(ACTIVITIES.stream().filter(a->!a.id().equals("school")||s.age<19).toList());Collections.shuffle(pool,new Random(Objects.hash(s.careerSeed,s.year,s.phase,"routine")));return List.copyOf(pool.subList(0,4));}
  public static int initial(GameState s,String id){return switch(id){case "voice"->s.attributes.get("communication");case "community"->s.followers;default->0;};}
  public static int progress(GameState s,Goal goal){return switch(goal.id()){

@@ -2,6 +2,25 @@
 
 Todas as alterações do ChromeProtocol são registradas aqui.
 
+## [1.3.0] — 2026-10-15
+
+### Adicionado
+- Séries MD3 e MD5 com todos os mapas persistidos, identificação da série, modo de resolução e estatísticas completas; contadores separados de séries e mapas.
+- Trajetória de elite com Kickoff, grupos regionais de seis equipes, cinco rodadas, classificação, chaves superior/inferior, Masters suíço e Champions com grupos e playoffs; semifinais inferiores e finais MD5.
+- Três controles: assumir três rounds-chave no mapa que pode fechar a série, simular o confronto ou avançar rodadas comuns até uma decisão. Todos registram resultados imediatamente.
+- Modo Run selecionável na criação ou durante a carreira: simular até quatro séries por bloco, parar em dilemas/fim do período e combinar preparação/teste no início do ano. Contratos, eventos e cartas continuam sob controle do jogador.
+- Dilemas entre blocos, seleção estável e sem repetir modelos já vistos no mesmo ano enquanto houver alternativas.
+- Treino permanente pela prática a cada quatro séries, inclusive derrotas; desenvolvimento por etapa concluída até os 23 anos, com limite 99 e mesmo equilíbrio nos dois ritmos.
+- Ícones SVG próprios e locais para troféus de Champions, Masters e regionais; conquistas ao lado do histórico anual, resultados por etapa e detalhes expansíveis de cada série/mapa.
+- Testes de calendário completo de 26 séries na base, classificações da elite, fases MD5, avanço seletivo, intervenção, persistência de blocos, migração e amostra de equilíbrio de dezesseis carreiras sem boost.
+
+### Alterado
+- Calendário de base/Premier usa 26 séries próprias (8 + 8 + 10). A elite varia conforme a trajetória; o caminho invicto do modelo tem 33 séries. Não se assume um total oficial universal de 26 ou 34–42.
+- Troféus dependem da campanha inteira; receitas por mapa ajustadas ao novo volume e prêmio por série. Salários/despesas continuam por mês, sem cobrança extra por série.
+- Saves antigos preservam mapas, números e resultados pendentes; mapa antigo em andamento conclui uma vez, sem fabricar uma MD3 ou estatísticas retroativas.
+- Documentação explicita simplificações: sem pontos oficiais, Ascension/promoções, tabela mundial ou simulação integral dos confrontos de outras equipes. Referências Riot e Rift Career, implementação própria.
+- Pacote, Docker e CI atualizados para 1.3.0.
+
 ## [1.2.0] — 2026-10-15
 
 ### Adicionado

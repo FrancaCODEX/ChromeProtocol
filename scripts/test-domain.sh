@@ -7,6 +7,7 @@ java -m jdk.compiler/com.sun.tools.javac.Main -encoding UTF-8 -d target/domain \
   src/main/java/br/com/chromeprotocol/GameState.java \
   src/main/java/br/com/chromeprotocol/Catalog.java \
   src/main/java/br/com/chromeprotocol/Calendar.java \
+  src/main/java/br/com/chromeprotocol/Tour.java \
   src/main/java/br/com/chromeprotocol/Events.java \
   src/main/java/br/com/chromeprotocol/PersonalLife.java \
   src/main/java/br/com/chromeprotocol/GameEngine.java \

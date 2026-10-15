@@ -1,6 +1,6 @@
 package br.com.chromeprotocol;
 
-/** 2026 competition names; representative maps, not a claim to reproduce live fixtures. */
+/** 2026 competition names; the player path is simulated in Tour, not live fixtures. */
 public final class Calendar {
     private Calendar() {}
     public static int tier(GameState s){return s.contract==null?1:s.contract.tier();}
@@ -25,7 +25,7 @@ public final class Calendar {
             default -> Catalog.PHASES.get(s.phase);
         };
     }
-    public static boolean match(GameState s){return switch(s.phase){case 3,5,8->true;case 4->s.qualifiedMasters1;case 6->s.qualifiedMasters2;case 9->tier(s)==1&&!academy(s)||s.qualifiedPlayoffs;case 10->s.qualifiedChampions;default->false;};}
+    public static boolean match(GameState s){return s.legacyMap&&s.match!=null||switch(s.phase){case 3,5,8->true;case 4->s.qualifiedMasters1;case 6->s.qualifiedMasters2;case 9->s.qualifiedPlayoffs;case 10->s.qualifiedChampions;default->false;};}
     public static boolean trophy(GameState s){return !reserve(s)&&switch(s.phase){case 3,4,5,6,10->true;case 8->tier(s)<=2;case 9->tier(s)>=2&&s.qualifiedPlayoffs;default->false;};}
     public static void qualification(GameState s,boolean won){if(reserve(s))return;switch(s.phase){case 3->s.qualifiedMasters1=won&&tier(s)==3;case 5->s.qualifiedMasters2=won&&tier(s)==3;case 8->s.qualifiedPlayoffs=won&&tier(s)>=2&&!academy(s);case 9->s.qualifiedChampions=won&&s.qualifiedPlayoffs&&s.age>=18;default->{}}}
 }

@@ -19,8 +19,9 @@ public class CareerService {
         return id == null ? null : repository.findById(id).filter(c -> isCurrent(c.state)).map(c -> engine.view(decode(c.state))).orElse(null);
     }
     @Transactional
-    public Created create(String name, String nationality, String role, String background, String agent, Appearance appearance, String mode, boolean igl, java.util.List<String> favorites, UUID previousId) {
+    public Created create(String name, String nationality, String role, String background, String agent, Appearance appearance, String mode, boolean igl, java.util.List<String> favorites, String pace, UUID previousId) {
         GameState state = engine.create(name, nationality, role, background, agent, appearance, mode, igl, favorites);
+        setPace(state,pace);
         UUID id = UUID.randomUUID(); Career career = new Career(id, encode(state));
         if (legacy(previousId)) career.archivedCareerId = previousId;
         repository.save(career);
@@ -33,10 +34,10 @@ public class CareerService {
         return engine.view(state);
     }
     @Transactional
-    public GameEngine.View restart(UUID id, int revision, String name, String nationality, String role, String background, String agent, Appearance appearance, String mode, boolean igl, java.util.List<String> favorites) {
+    public GameEngine.View restart(UUID id, int revision, String name, String nationality, String role, String background, String agent, Appearance appearance, String mode, boolean igl, java.util.List<String> favorites, String pace) {
         Career career = load(id); GameState old = decode(career.state);
         if (old.revision != revision) throw new IllegalArgumentException("Sua carreira mudou. Atualize antes de reiniciar.");
-        GameState state = engine.create(name, nationality, role, background, agent, appearance, mode, igl, favorites); state.revision = old.revision + 1;
+        GameState state = engine.create(name, nationality, role, background, agent, appearance, mode, igl, favorites); setPace(state,pace); state.revision = old.revision + 1;
         career.state = encode(state); return engine.view(state);
     }
     @Transactional
@@ -59,6 +60,7 @@ public class CareerService {
     public boolean hasArchive(UUID id) {
         return id != null && repository.findById(id).map(c -> !isCurrent(c.state) || c.archivedCareerId != null).orElse(false);
     }
+    private void setPace(GameState state,String pace){if(pace!=null&&!java.util.Set.of("detailed","run").contains(pace))throw new IllegalArgumentException("Ritmo inválido.");state.pace=pace==null?"detailed":pace;}
     private boolean isCurrent(String state) {
         try { return "valorant-career-v1".equals(mapper.readTree(state).path("gameMode").asText()); }
         catch (JsonProcessingException e) { throw new IllegalStateException("Falha ao identificar salvamento", e); }
@@ -85,6 +87,7 @@ public class CareerService {
                     game.match.finalEligible = Calendar.trophy(game);
                 }
             }
+            if(mapper.readTree(state).path("rulesVersion").asInt(1)<3){game.rulesVersion=3;game.legacyMap=game.match!=null;}
             if(game.favoriteAgents == null || game.favoriteAgents.isEmpty()) game.favoriteAgents = new java.util.ArrayList<>(java.util.List.of(game.agent));
             if(game.developmentMode == null) game.developmentMode = "standard";
             return game;
