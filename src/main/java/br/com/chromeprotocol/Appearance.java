@@ -4,9 +4,11 @@ import java.util.Set;
 
 /** Cosmetic choices only. Tokens are validated before they can be persisted. */
 public record Appearance(String face, String skin, String hair, String hairColor,
-                         String eyes, String outfit, String accent,String beard,String eyeColor,String eyewear,String headwear,String jerseyPattern,String portraitStyle) {
+                         String eyes, String outfit, String accent,String beard,String eyeColor,String eyewear,String headwear,String jerseyPattern,String portraitStyle,String presentation) {
     public Appearance {
-        portraitStyle=valid(portraitStyle,"classic",Set.of("classic","studio"));
+        presentation=valid(presentation,"masculine",Set.of("masculine","feminine"));
+        if("studio".equals(portraitStyle))portraitStyle="arena";
+        portraitStyle=valid(portraitStyle,"classic",Set.of("classic","studio","arena"));
         face = valid(face, "angular", Set.of("angular", "soft", "broad"));
         skin = valid(skin, "warm", Set.of("porcelain", "sand", "warm", "copper", "umber", "ebony"));
         hair = valid(hair, "undercut", Set.of("undercut", "mohawk", "bob", "braids", "shaved","curly","long","ponytail","afro"));
@@ -22,6 +24,7 @@ public record Appearance(String face, String skin, String hair, String hairColor
     }
     public Appearance(String face,String skin,String hair,String hairColor,String eyes,String outfit,String accent){this(face,skin,hair,hairColor,eyes,outfit,accent,null,null,null,null,null,null);}
     public Appearance(String face,String skin,String hair,String hairColor,String eyes,String outfit,String accent,String beard,String eyeColor,String eyewear,String headwear,String jerseyPattern){this(face,skin,hair,hairColor,eyes,outfit,accent,beard,eyeColor,eyewear,headwear,jerseyPattern,null);}
+    public Appearance(String face,String skin,String hair,String hairColor,String eyes,String outfit,String accent,String beard,String eyeColor,String eyewear,String headwear,String jerseyPattern,String portraitStyle){this(face,skin,hair,hairColor,eyes,outfit,accent,beard,eyeColor,eyewear,headwear,jerseyPattern,portraitStyle,null);}
     public static Appearance defaults() {
         return new Appearance(null, null, null, null, null, null, null);
     }

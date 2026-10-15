@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0 — 2026-10-15
+
+- Interface redesenhada, com navegação arredondada, mercado com identidade e salário em destaque e layouts responsivos.
+- Retrato Arena vetorial local, opção de personagem feminina na criação e edição; migração do antigo Estúdio e manutenção do Clássico.
+- Propostas vinculadas ao ID estável da organização, corrigindo duplicações e assinatura com clube diferente do exibido.
+- Mercado internacional nas quatro regiões, sem bloqueio de idade para a elite na simulação.
+- Renovação única com aumento mínimo de 10% e valorização por desempenho; convites Academy → principal com aumento mínimo de 20%, sem multa.
+- Ascension regional para equipes independentes classificadas, com promoção ao VCT da região na temporada seguinte.
+- Regressões de domínio, API e navegador para identidades das ofertas, contratos, acesso regional e aparência feminina persistida.
+
 
 ## 1.5.0 — 2026-10-15
 

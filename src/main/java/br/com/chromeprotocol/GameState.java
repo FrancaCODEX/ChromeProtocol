@@ -6,8 +6,10 @@ import java.util.*;
 public class GameState {
     public String gameMode = "valorant-career-v1";
     public String name, nationality, role, background, agent;
-    public int rulesVersion = 3;
+    public int rulesVersion = 4;
     public String developmentMode = "standard";
+    public boolean qualifiedAscension;
+    public Map<String,Integer> vctPromotions = new LinkedHashMap<>();
     public boolean igl, pendingCards, retiring, qualifiedMasters1, qualifiedMasters2, qualifiedPlayoffs, qualifiedChampions;
     public int cardChanceBonus, eventVariant;
     public Set<String> activitySlots = new LinkedHashSet<>();

@@ -88,8 +88,16 @@ public class CareerService {
                 }
             }
             if(mapper.readTree(state).path("rulesVersion").asInt(1)<3){game.rulesVersion=3;game.legacyMap=game.match!=null;}
+            if(mapper.readTree(state).path("rulesVersion").asInt(1)<4){
+                // Existing independent Stage 2 campaigns retain their earned regional qualification.
+                var stage=game.campaigns.get(8);
+                if(Calendar.tier(game)<3&&game.contract!=null&&!Calendar.academy(game)&&!Calendar.reserve(game))
+                    game.qualifiedAscension=stage!=null&&stage.done&&stage.wins>=6||game.phase==9&&game.qualifiedPlayoffs;
+                game.rulesVersion=4;
+            }
             if(game.favoriteAgents == null || game.favoriteAgents.isEmpty()) game.favoriteAgents = new java.util.ArrayList<>(java.util.List.of(game.agent));
             if(game.developmentMode == null) game.developmentMode = "standard";
+            Catalog.refreshContractTier(game);
             Catalog.ensureStarter(game);
             return game;
         }

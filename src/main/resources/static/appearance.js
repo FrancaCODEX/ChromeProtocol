@@ -1,11 +1,12 @@
-import {studioSvg} from './vendor/avatar-studio.js';
+import {arenaSvg} from './portrait-arena.js';
 /** Original layered SVG portrait. Every interpolated token comes from these fixed palettes. */
 const skinColors = {porcelain:'#edcfb9',sand:'#d9b291',warm:'#bc8b70',copper:'#a56c51',umber:'#76503e',ebony:'#49352f'};
 const hairColors = {black:'#20232e',silver:'#d8dde2',cyan:'#48d8df',violet:'#a28bfb',red:'#dc5968',gold:'#e7b66c',brown:'#624536',auburn:'#a85b3a'};
 const accents = {cyan:'#58f0d4',acid:'#dcf76a',magenta:'#fa78ca',amber:'#ffb35a',red:'#ff5967',blue:'#6ca8ff',white:'#ecf4fa'};
-export const DEFAULT_APPEARANCE = Object.freeze({face:'angular',skin:'warm',hair:'undercut',hairColor:'black',eyes:'natural',outfit:'runner',accent:'cyan',beard:'none',eyeColor:'brown',eyewear:'none',headwear:'none',jerseyPattern:'diagonal',portraitStyle:'studio'});
+export const DEFAULT_APPEARANCE = Object.freeze({face:'angular',skin:'warm',hair:'undercut',hairColor:'black',eyes:'natural',outfit:'runner',accent:'cyan',beard:'none',eyeColor:'brown',eyewear:'none',headwear:'none',jerseyPattern:'diagonal',portraitStyle:'arena',presentation:'masculine'});
 export const OPTIONS = Object.freeze({
-  portraitStyle:{label:'Estilo do retrato',options:[['studio','Estúdio'],['classic','Clássico']]},
+  presentation:{label:'Personagem',options:[['masculine','Masculino'],['feminine','Feminino']]},
+  portraitStyle:{label:'Estilo do retrato',options:[['arena','Arena'],['classic','Clássico']]},
   face:{label:'Formato do rosto',options:[['angular','Angular'],['soft','Suave'],['broad','Largo']]},
   skin:{label:'Tom de pele',options:[['porcelain','Porcelana'],['sand','Areia'],['warm','Dourado'],['copper','Cobre'],['umber','Castanho'],['ebony','Ébano']],colors:skinColors},
   hair:{label:'Corte de cabelo',options:[['undercut','Undercut'],['mohawk','Moicano'],['bob','Chanel'],['braids','Tranças'],['shaved','Raspado'],['curly','Cacheado'],['long','Longo'],['ponytail','Rabo de cavalo'],['afro','Afro']]},
@@ -19,6 +20,7 @@ export const OPTIONS = Object.freeze({
   jerseyPattern:{label:'Estampa da jersey',options:[['diagonal','Diagonal'],['minimal','Minimalista'],['stripes','Listras']]}
 });
 export function normalizeAppearance(value) {
+  if(value?.portraitStyle==='studio')value={...value,portraitStyle:'arena'};
   const legacy={portraitStyle:'classic',eyewear:value?.eyes==='optic'?'rectangular':'none',headwear:value?.eyes==='visor'?'headset':'none'};
   return {...Object.fromEntries(Object.entries(OPTIONS).map(([key,group])=>[key,group.options.some(([id])=>id===value?.[key])?value[key]:legacy[key]||DEFAULT_APPEARANCE[key]])),eyes:'natural'};
 }
@@ -29,7 +31,7 @@ export function randomAppearance() {
 export function mountCustomizer(host, value, onChange, prefix) {
   const appearance=normalizeAppearance(value); host.replaceChildren();
   const tabs=document.createElement('div');tabs.className='avatar-tabs';tabs.setAttribute('role','tablist');const content=document.createElement('div');host.append(tabs,content);
-  const categories={Rosto:['portraitStyle','face','skin','eyeColor','beard'],Cabelo:['hair','hairColor'],Estilo:['eyewear','headwear','outfit','accent','jerseyPattern']};
+  const categories={Rosto:['presentation','portraitStyle','face','skin','eyeColor','beard'],Cabelo:['hair','hairColor'],Estilo:['eyewear','headwear','outfit','accent','jerseyPattern']};
   Object.entries(categories).forEach(([name,keys],index)=>{const button=document.createElement('button');button.type='button';button.textContent=name;button.className='avatar-tab'+(index===0?' active':'');button.setAttribute('role','tab');button.setAttribute('aria-selected',String(index===0));const pane=document.createElement('div');pane.className='avatar-pane'+(index?' hidden':'');button.addEventListener('click',()=>{tabs.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-selected',String(b===button));});content.querySelectorAll('.avatar-pane').forEach(p=>p.classList.toggle('hidden',p!==pane));});tabs.append(button);content.append(pane);
   for (const key of keys) {const group=OPTIONS[key];
     const field=document.createElement('fieldset'); field.className='appearance-group';
@@ -39,12 +41,12 @@ export function mountCustomizer(host, value, onChange, prefix) {
       const item=document.createElement('label'); item.className=group.colors?'swatch-option':'appearance-option';
       const input=document.createElement('input'); input.type='radio'; input.name=`${prefix}-${key}`; input.value=id; input.checked=appearance[key]===id;
       input.setAttribute('aria-label',`${group.label}: ${label}`); item.title=label;
-      input.addEventListener('change',()=>{appearance[key]=id;onChange({...appearance});}); item.append(input);
+      input.addEventListener('change',()=>{appearance[key]=id;if(key==='presentation'&&id==='feminine'){appearance.beard='none';host.querySelector('input[value=none][name$=beard]')?.click();}onChange({...appearance});host.querySelectorAll('[data-preview-key]').forEach(p=>renderPortrait(p,{...appearance,[p.dataset.previewKey]:p.dataset.previewValue},'Prévia'));}); item.append(input);
       if(group.colors) {
         const dot=document.createElementNS('http://www.w3.org/2000/svg','svg');dot.setAttribute('viewBox','0 0 32 32');dot.setAttribute('aria-hidden','true');
         const circle=document.createElementNS(dot.namespaceURI,'circle');circle.setAttribute('cx','16');circle.setAttribute('cy','16');circle.setAttribute('r','11');circle.setAttribute('fill',group.colors[id]);dot.append(circle);item.append(dot);
         const sr=document.createElement('span');sr.className='sr-only';sr.textContent=label;item.append(sr);
-      } else {if(['portraitStyle','hair','outfit','beard','headwear'].includes(key)){const preview=document.createElement('span');preview.className='avatar-option-preview';renderPortrait(preview,{...appearance,[key]:id},label);item.append(preview);} const text=document.createElement('span');text.textContent=label;item.append(text); }
+      } else {if(['portraitStyle','hair','outfit','beard','headwear'].includes(key)){const preview=document.createElement('span');preview.className='avatar-option-preview';preview.dataset.previewKey=key;preview.dataset.previewValue=id;renderPortrait(preview,{...appearance,[key]:id},label);item.append(preview);} const text=document.createElement('span');text.textContent=label;item.append(text); }
       options.append(item);
     }
     field.append(options);pane.append(field);
@@ -52,9 +54,7 @@ export function mountCustomizer(host, value, onChange, prefix) {
 }
 export function renderPortrait(host, value, label='Retrato do personagem') {
   const a=normalizeAppearance(value),skin=skinColors[a.skin],hair=hairColors[a.hairColor],neon=accents[a.accent];
-  if(a.portraitStyle==='studio'){
-    const wrap=document.createElement('div');wrap.innerHTML=studioSvg(a,{skin,hair,accent:neon,iris:OPTIONS.eyeColor.colors[a.eyeColor]});const svg=wrap.firstElementChild;svg.classList.add('character-svg','studio-svg');svg.setAttribute('role','img');svg.setAttribute('aria-label',label);host.replaceChildren(svg);host.dataset.accent=a.accent;return;
-  }
+  if(a.portraitStyle==='arena'){const wrap=document.createElement('div');wrap.innerHTML=arenaSvg(a,{skin,hair,accent:neon,iris:OPTIONS.eyeColor.colors[a.eyeColor]});const svg=wrap.firstElementChild;svg.classList.add('character-svg','arena-svg');svg.dataset.presentation=a.presentation;svg.setAttribute('role','img');svg.setAttribute('aria-label',label);host.replaceChildren(svg);host.dataset.accent=a.accent;return;}
   const faces={angular:'M135 126Q137 91 180 90Q223 91 225 126L219 193 198 219 180 227 161 219 141 193Z',soft:'M135 131Q134 91 180 90Q226 91 225 131L222 179Q218 215 180 228Q142 215 138 179Z',broad:'M127 129Q130 91 180 90Q230 91 233 129L229 185 216 213 180 227 144 213 131 185Z'};
   const hairs={
     curly:`<path d="M129 144V116Q126 81 153 80Q174 62 195 78Q232 76 233 118L224 146 215 120Q177 133 142 117L139 146Z" fill="${hair}"/><g fill="${hair}" stroke="#0e1422" stroke-opacity=".3" stroke-width="2"><circle cx="143" cy="100" r="15"/><circle cx="163" cy="89" r="17"/><circle cx="185" cy="86" r="17"/><circle cx="207" cy="93" r="17"/><circle cx="223" cy="110" r="13"/></g>`,
