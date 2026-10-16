@@ -34,6 +34,7 @@ public class GameState {
     public static class Series {
         public String id, opponent, competition, round, critical;
         public int year, phase, bestOf = 3, wins, losses;
+        public Integer teamOvr, opponentOvr;
         public boolean official;
     }
     public record SeriesResult(String id,int year,int phase,String competition,String round,String opponent,String team,int bestOf,int wins,int losses,boolean won,boolean official,String mode,List<MapStats> maps) {}
@@ -65,6 +66,8 @@ public class GameState {
         public boolean finalEligible;
         public String seriesId;
         public int mapNumber;
+        public boolean mapDecision;
+        public String agent;
     }
     public record Change(String label, String before, String after) {}
     public record Outcome(String title, String narrative, String tone, String date, List<Change> changes, MapStats mapStats,List<SeriesResult> seriesResults) {
@@ -77,7 +80,8 @@ public class GameState {
     public record GoalAchievement(int year,String name,boolean completed,int cash) {}
     public record SelectedCard(int year,String id,String name) {}
     public record Award(int year,String title,String detail) {}
-    public record MapStats(int year,int phase,String competition,String map,String opponent,String team,boolean won,int score,int opponentScore,int kills,int deaths,int assists,int combatScore,int rounds,double acs,String kd,boolean official,String seriesId,Integer mapNumber,String mode) {
+    public record MapStats(int year,int phase,String competition,String map,String opponent,String team,boolean won,int score,int opponentScore,int kills,int deaths,int assists,int combatScore,int rounds,double acs,String kd,boolean official,String seriesId,Integer mapNumber,String mode,String agent,Integer teamOvr,Integer opponentOvr) {
+        public MapStats(int year,int phase,String competition,String map,String opponent,String team,boolean won,int score,int opponentScore,int kills,int deaths,int assists,int combatScore,int rounds,double acs,String kd,boolean official,String seriesId,Integer mapNumber,String mode){this(year,phase,competition,map,opponent,team,won,score,opponentScore,kills,deaths,assists,combatScore,rounds,acs,kd,official,seriesId,mapNumber,mode,null,null,null);}
         public MapStats(int year,int phase,String competition,String map,String opponent,String team,boolean won,int score,int opponentScore,int kills,int deaths,int assists,int combatScore,int rounds,double acs,String kd,boolean official){this(year,phase,competition,map,opponent,team,won,score,opponentScore,kills,deaths,assists,combatScore,rounds,acs,kd,official,null,null,"legacy");}
     }
     public record History(String date, String title, String text, String tone, List<Change> changes) {}

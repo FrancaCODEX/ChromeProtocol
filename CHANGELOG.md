@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.0 — 2026-10-16
+
+- Uma decisão por mapa nas novas séries interativas, desde o mapa 1; fechamento exato em duas vitórias para MD3 e três para MD5.
+- Agente principal/favoritos gravado por mapa, com seleção estável ao recarregar e indicação de dados ausentes nos mapas antigos.
+- Histórico de estatísticas verde/vermelho, resultados maiores com indicação explícita de sucesso/falha e paleta preto/coral/dourado.
+- Indicadores no topo à direita no desktop e antes das escolhas em telas menores; comparação de OVR dos clubes e confronto atual.
+- Força de quintetos baseada em snapshot GPR oficial de 2026, escala fictícia documentada, elencos anuais simulados, forma recente e contribuição de 20% do titular.
+- Chances competitivas e placares sensíveis aos dois times, inclusive nos grupos; OVRs do confronto registrados por mapa e congelados na série.
+- Compatibilidade com séries antigas em andamento, testes de MD3/MD5 completos, recarga, agentes, ratings e dificuldade.
+
 ## 1.7.0 — 2026-10-16
 
 - Tema escuro com as cores coral, verde e dourado, mantendo o layout responsivo.
