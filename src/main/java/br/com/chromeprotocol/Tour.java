@@ -20,7 +20,7 @@ public final class Tour {
     static void seedBracket(GameState.Campaign c){if(c.seed==1)c.upperWins=1;if(c.seed==4){c.bracketLosses=1;c.lowerRemaining=4;}}
     static List<String> pool(GameState s){
         boolean global=Set.of(4,6,10).contains(s.phase);
-        var names=new ArrayList<>(Catalog.ORGS.stream().filter(o->!o.name().equals(Catalog.team(s))&&(elite(s)?o.tier()==3&&(global||o.region().equals(Calendar.region(s))):o.tier()<3&&o.region().equals(Calendar.region(s)))).map(Catalog.Organization::name).toList());
+        var names=new ArrayList<>(Catalog.ORGS.stream().filter(o->!o.name().equals(Catalog.team(s))&&(elite(s)?Catalog.organizationTier(s,o)==3&&(global||o.region().equals(Calendar.region(s))):Catalog.organizationTier(s,o)<3&&o.region().equals(Calendar.region(s)))).map(Catalog.Organization::name).toList());
         if(s.contract==null){names.clear();names.addAll(List.of("Mix Aurora","Mix Horizonte","Mix Nexus","Mix Impacto","Mix Eclipse","Mix Vanguard"));}
         for(int i=names.size();i<5;i++)names.add("Mix regional "+(i+1));
         Collections.shuffle(names,new Random(Objects.hash(s.careerSeed,s.year,s.phase,"pool")));return names;
@@ -34,7 +34,7 @@ public final class Tour {
         for(int round=0;round<Math.min(5,c.groupWins+c.groupLosses);round++)for(var pair:pairs(round)){
             int a=pair[0],b=pair[1];played[a]++;played[b]++;
             if(a==0||b==0){String opponent=names.get(a+b);boolean won=results.stream().filter(r->r.opponent().equals(opponent)).findFirst().map(GameState.SeriesResult::won).orElse(false);wins[won?0:a+b]++;}
-            else wins[Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,round,a,b),2)==0?a:b]++;
+            else{int chance=Math.max(12,Math.min(85,50+2*(TeamRatings.stageStrength(s,names.get(a))-TeamRatings.stageStrength(s,names.get(b)))));wins[Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,round,a,b),100)<chance?a:b]++;}
         }
         var rows=new ArrayList<Standing>();for(int i=0;i<6;i++)rows.add(new Standing(names.get(i),played[i],wins[i],played[i]-wins[i],i==0));
         rows.sort(Comparator.comparingInt(Standing::wins).reversed().thenComparingInt(Standing::losses).thenComparingInt(r->Math.floorMod(Objects.hash(s.careerSeed,r.team()),10000)));return rows;

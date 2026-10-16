@@ -144,7 +144,7 @@ class GameApiTest {
 
     @Test void unfinishedLegacyMapIsNotInventedAsAFullSeries() throws Exception {
         Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);state.rulesVersion=2;state.phase=3;state.wins=7;state.match=new GameState.Match();state.match.opponent="Mix antigo";state.match.map="Haven";state.match.competition="Premier antigo";state.match.stage=2;state.match.roundsWon=2;state.match.score=9;state.match.opponentScore=7;row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
-        var initial=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andExpect(jsonPath("$.game.activeMatch.stage").value(2)).andReturn().getResponse().getContentAsString()).path("game");assertEquals(0,initial.path("character").path("series").size());String choice=initial.path("scene").path("choices").get(0).path("id").asText();var completed=action(cookie,"choice",choice,0).path("character");assertEquals(8,completed.path("wins").asInt());assertEquals(0,completed.path("series").size());assertTrue(completed.path("maps").get(0).path("seriesId").isNull());assertEquals(4,completed.path("phase").asInt());
+        var initial=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andExpect(jsonPath("$.game.activeMatch.stage").value(2)).andReturn().getResponse().getContentAsString()).path("game");assertEquals(0,initial.path("character").path("series").size());String choice=initial.path("scene").path("choices").get(0).path("id").asText();var completed=action(cookie,"choice",choice,0).path("character");assertEquals(8,completed.path("wins").asInt());assertEquals(0,completed.path("series").size());assertTrue(completed.path("maps").get(0).path("seriesId").isNull());assertTrue(completed.path("maps").get(0).path("agent").isNull(),"Do not invent the agent in an old map");assertEquals(4,completed.path("phase").asInt());
     }
 
     @Test void seasonModeSimulatesBetweenMeaningfulDecisionsAndPersists() throws Exception {
@@ -223,6 +223,23 @@ class GameApiTest {
         for(String id:java.util.List.of("mvp","rookie","duelist","initiator","controller","sentinel","igl"))
             mvc.perform(get("/awards/"+id+".svg")).andExpect(status().isOk());
         mvc.perform(get("/trophies/ascension.png")).andExpect(status().isOk());
+    }
+
+    @Test void oneDecisionPerMapAndAgentPersistWithoutReplayOrHiddenOpening() throws Exception {
+        Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();var state=mapper.readValue(row.state,GameState.class);
+        state.phase=3;state.favoriteAgents=new java.util.ArrayList<>(java.util.List.of("Jett","Miks"));row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+        var start=action(cookie,"choice","series-play",0);assertEquals(0,start.path("character").path("maps").size());assertEquals(1,start.path("character").path("match").path("mapNumber").asInt());
+        action(cookie,"continue","",1);
+        var loaded=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("game");
+        String agent=loaded.path("activeMatch").path("agent").asText();assertTrue(java.util.List.of("Jett","Miks").contains(agent));
+        String choice=loaded.path("scene").path("choices").get(0).path("id").asText();
+        var result=action(cookie,"choice",choice,2);assertEquals(1,result.path("character").path("maps").size());assertEquals(0,result.path("character").path("series").size());assertEquals(2,result.path("activeMatch").path("mapNumber").asInt());
+        assertEquals(agent,result.path("character").path("maps").get(0).path("agent").asText());
+        assertTrue(result.path("character").path("maps").get(0).path("teamOvr").isNumber());
+        mvc.perform(get("/api/game").cookie(cookie)).andExpect(jsonPath("$.game.character.maps.length()").value(1)).andExpect(jsonPath("$.game.character.maps[0].agent").value(agent));
+        mvc.perform(post("/api/game/action").cookie(cookie).with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new GameEngine.Action("choice",choice,2)))).andExpect(status().isBadRequest());
+        action(cookie,"continue","",3);var after=mapper.readTree(mvc.perform(get("/api/game").cookie(cookie)).andReturn().getResponse().getContentAsString()).path("game");
+        assertEquals(2,after.path("activeMatch").path("mapNumber").asInt());assertEquals(1,after.path("character").path("maps").size());
     }
 
 }

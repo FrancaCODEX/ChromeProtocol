@@ -17,7 +17,7 @@ public final class GameEngine {
     public record CalendarEntry(int phase,String name,String period,String status) {}
     public record Statistics(int maps,int kills,int deaths,int assists,int rounds,double acs,String kd) {}
     public record View(GameState character,Scene scene,List<Catalog.Offer> offers,Map<String,String> attributes,List<String> phases,int overall,String team,String circuit,
-                       GameState.Match activeMatch,List<InvestmentView> investments,List<CardView> cards,List<CalendarEntry> calendar,Statistics statistics,Statistics seasonStatistics,List<ActivityView> activities,String activityStatus,List<GoalView> goals,Tour.Agenda agenda,List<CareerHonors.ClubLegacy> clubLegacy,List<CareerHonors.SeasonFinal> seasonFinals) {}
+                       GameState.Match activeMatch,List<InvestmentView> investments,List<CardView> cards,List<CalendarEntry> calendar,Statistics statistics,Statistics seasonStatistics,List<ActivityView> activities,String activityStatus,List<GoalView> goals,Tour.Agenda agenda,List<CareerHonors.ClubLegacy> clubLegacy,List<CareerHonors.SeasonFinal> seasonFinals,TeamRatings.Profile teamRating,TeamRatings.Matchup matchup,List<TeamRatings.Profile> teamRatings) {}
 
     public GameState create(String name,String nationality,String role,String background,String agent,Appearance appearance){return create(name,nationality,role,background,agent,appearance,"standard",false,agent==null?List.of():List.of(agent));}
     public GameState create(String name,String nationality,String role,String background,String agent,Appearance appearance,String mode,boolean igl,List<String> favorites){
@@ -45,7 +45,7 @@ public final class GameEngine {
             s.pendingCards?cardOffers(s):List.of(),calendar(s),statistics(s.maps.stream().filter(GameState.MapStats::official).toList()),statistics(s.maps.stream().filter(m->m.official()&&m.year()==s.year).toList()),
             PersonalLife.activities(s).stream().map(a->new ActivityView(a,previewGains(s,a.bonuses()),PersonalLife.available(s))).toList(),
             s.ended?"Carreira encerrada":s.pendingCards?"Escolha sua carta anual antes de retomar a rotina":s.match!=null?"Conclua o mapa em andamento":s.activitySlots.contains(PersonalLife.slot(s))?"Atividade deste período concluída":s.outcome!=null?"Leia o resultado pendente":"Uma atividade opcional disponível neste período",
-            PersonalLife.GOALS.stream().map(g->new GoalView(g.id(),g.name(),g.description(),g.target(),g.id().equals(s.seasonGoal)?PersonalLife.progress(s,g):0,g.cash(),previewGains(s,g.bonuses()),g.id().equals(s.seasonGoal),s.seasonGoal==null&&s.phase<=2&&!s.ended&&!s.pendingCards&&s.outcome==null&&(!g.id().equals("voice")||s.attributes.get("communication")<=91))).toList(),Tour.agenda(s),CareerHonors.legacy(s),CareerHonors.finals(s));
+            PersonalLife.GOALS.stream().map(g->new GoalView(g.id(),g.name(),g.description(),g.target(),g.id().equals(s.seasonGoal)?PersonalLife.progress(s,g):0,g.cash(),previewGains(s,g.bonuses()),g.id().equals(s.seasonGoal),s.seasonGoal==null&&s.phase<=2&&!s.ended&&!s.pendingCards&&s.outcome==null&&(!g.id().equals("voice")||s.attributes.get("communication")<=91))).toList(),Tour.agenda(s),CareerHonors.legacy(s),CareerHonors.finals(s),TeamRatings.profile(s,Catalog.team(s),true),TeamRatings.matchup(s),Catalog.ORGS.stream().map(o->TeamRatings.profile(s,o.name(),true)).sorted(Comparator.comparingInt(TeamRatings.Profile::overall).reversed()).toList());
     }
     private int growth(GameState s,int amount){return amount<=0?0:s.developmentMode.equals("prodigy")?(int)Math.ceil(amount*1.5):amount;}
     private Map<String,Integer> previewGains(GameState s,Map<String,Integer> bonuses){var result=new LinkedHashMap<String,Integer>();bonuses.forEach((key,value)->result.put(key,Math.min(99-s.attributes.get(key),growth(s,value))));return result;}
@@ -54,7 +54,10 @@ public final class GameEngine {
     private List<CardView> cardOffers(GameState s){var pool=new ArrayList<>(Catalog.CARDS);Collections.shuffle(pool,new Random(Objects.hash(s.careerSeed,s.year,"cards")));var cards=new ArrayList<>(pool.subList(0,3));if(s.developmentMode.equals("prodigy")&&cards.stream().noneMatch(c->c.id().equals("phenom")))cards.set(2,Catalog.CARDS.get(5));return cards.stream().map(c->new CardView(c.id(),c.name(),c.rarity(),previewGains(s,c.bonuses()),s.cardChanceBonus<15?1:0,c.detail())).toList();}
     private Choice option(GameState s,String id,String title,String description,String attribute,int difficulty,String consequence){
         int odds=attribute.isEmpty()?100:clamp(51+s.attributes.get(attribute)/2-difficulty+(s.energy-50)/12+(s.form-50)/15-s.stress/15+(s.chemistry-50)/15+s.cardChanceBonus+(s.developmentMode.equals("prodigy")?8:0),20,98);
-        if(!attribute.isEmpty()&&Calendar.match(s)){if(s.match!=null)odds+=s.match.roundsWon*2;if(Calendar.reserve(s))odds-=4;if(s.igl&&id.equals("match-igl"))odds+=5;odds=clamp(odds,20,98);}
+        if(!attribute.isEmpty()&&s.match!=null&&s.match.mapDecision&&s.currentSeries!=null){
+            int adjustment=(s.attributes.get(attribute)-Catalog.overall(s))/5+(s.igl&&id.equals("match-igl")?3:0);
+            odds=clamp(TeamRatings.chance(s,s.currentSeries)+adjustment-(difficulty-4)/3,10,88);
+        }else if(!attribute.isEmpty()&&Calendar.match(s)){if(s.match!=null)odds+=s.match.roundsWon*2;if(Calendar.reserve(s))odds-=4;if(s.igl&&id.equals("match-igl"))odds+=5;odds=clamp(odds,20,98);}
         return new Choice(id,title,description,attribute,odds,consequence,true);
     }
     private Scene scene(GameState s){
@@ -71,14 +74,15 @@ public final class GameEngine {
         if(s.pace.equals("run")&&s.phase==0){c.add(option(s,"run-prepare","Preparar e abrir o mercado","Sua rotina combina treino e um teste de consistência. Você escolhe o próximo contrato.","",0,"Leitura +3 · disciplina +5 · reputação +4"));return new Scene("RUN / NOVA TEMPORADA","O próximo capítulo começa agora.","Avance por blocos de séries, tome decisões de carreira e acompanhe o legado. Você ainda pode assumir qualquer momento decisivo.",date(s),List.copyOf(c));}
         if(Calendar.match(s)&&s.match==null&&!s.legacyMap){
             var f=Tour.fixture(s);String detail=f.critical.isBlank()?"Rodada regular. Você pode simular ou entrar no servidor.":"MOMENTO DECISIVO: "+f.critical+".";
-            c.add(option(s,"series-play","Assumir o momento decisivo","Os mapas iniciais são simulados; você decide três rounds-chave no mapa que pode fechar a série.","",0,"MD"+f.bestOf+" · todos os mapas ficam no histórico"));
+            c.add(option(s,"series-play","Assumir o momento decisivo","Uma decisão por mapa. Sucesso vence o mapa; o primeiro a duas vitórias na MD3 ou três na MD5 fecha a série.","",0,"MD"+f.bestOf+" · todos os mapas ficam no histórico"));
             c.add(option(s,"series-sim","Simular esta série","Seu jogador atua com seus atributos, condição e bônus atuais.","",0,"Resultado completo · sem gastar escolhas em rounds comuns"));
             c.add(option(s,s.pace.equals("run")?"series-run":"series-next",s.pace.equals("run")?"Avançar a run":"Avançar até uma decisão",s.pace.equals("run")?"Simular até quatro séries e parar em um dilema ou no fim do período.":"Simular rodadas comuns e parar antes de classificação, eliminação ou título.","",0,"Nenhum contrato, carta anual ou dilema será escolhido por você"));
             return new Scene(s.pace.equals("run")?"RUN / AGENDA":"AGENDA DE SÉRIES",f.competition,Catalog.team(s)+" x "+f.opponent+" · "+f.round+" · MD"+f.bestOf+". "+detail,date(s),List.copyOf(c));
         }
         if(Calendar.match(s)){
-            GameState.Match m=matchFor(s);var event=Events.round(s,m.stage);tag="MATCH DAY";title=m.competition;description=Catalog.team(s)+" x "+m.opponent+" · "+m.map+". "+event.title()+" "+event.description();
-            for(String requested:event.plays()){String id=requested.equals("match-igl")&&!s.igl?"match-support":requested;var play=Events.play(id);if(c.stream().noneMatch(x->x.id().equals(id)))c.add(option(s,id,play.title(),play.description(),play.attribute(),play.difficulty(),"Round-chave · "+(s.igl&&id.equals("match-igl")?"bônus de IGL · ":"")+"energia −"+Math.max(0,play.energy()-s.investments.getOrDefault("nutrition",0))));}
+            GameState.Match m=matchFor(s);var event=Events.round(s,m.mapDecision?m.mapNumber-1:m.stage);tag="MATCH DAY";title=m.competition;description=Catalog.team(s)+" x "+m.opponent+" · "+m.map+(m.mapDecision?" · Mapa "+m.mapNumber+" · Série "+s.currentSeries.wins+"–"+s.currentSeries.losses+" · MD"+s.currentSeries.bestOf:".")+". "+event.title()+" "+event.description();
+            for(String requested:event.plays()){String id=requested.equals("match-igl")&&!s.igl?"match-support":requested;var play=Events.play(id);if(c.stream().noneMatch(x->x.id().equals(id)))c.add(option(s,id,play.title(),play.description(),play.attribute(),play.difficulty(),(m.mapDecision?"Uma decisão resolve este mapa · ":"Round-chave · ")+(s.igl&&id.equals("match-igl")?"bônus de IGL · ":"")+"energia −"+Math.max(0,play.energy()-s.investments.getOrDefault("nutrition",0))));}
+            if(m.mapDecision)c.add(new Choice("map-sim","Simular este mapa","Deixar o quinteto resolver o mapa atual.","",TeamRatings.chance(s,s.currentSeries),"Uma vitória ou derrota registrada · a série continua até fechar",true));
             return new Scene(tag,title,description,date(s),List.copyOf(c));
         }
         switch(s.phase){
@@ -107,9 +111,10 @@ public final class GameEngine {
         var original=s.outcome;var batch=autoSeason(s);if(batch.isEmpty()&&s.phase!=12&&!s.pendingCards)return;
         normalize(s);String narrative=(original==null?"":original.narrative()+" ")+"A agenda foi simulada automaticamente: "+batch.size()+" séries, com todos os mapas e estatísticas salvos. "+(s.pendingCards?"Temporada concluída. Escolha sua carta de evolução para o próximo ano.":"Um acontecimento importante pede sua escolha.");
         var changes=changes(before,snapshot(s));String title=s.pendingCards?"Temporada "+startYear+" concluída":"Seu próximo passo fora do servidor";
-        s.outcome=new GameState.Outcome(title,narrative,"good",when,changes,null,List.copyOf(batch));
+        String decisionTone=original==null?"neutral":original.tone();
+        s.outcome=new GameState.Outcome(title,narrative,decisionTone,when,changes,null,List.copyOf(batch));
         if(original!=null&&!s.history.isEmpty())s.history.remove(0);
-        s.history.add(0,new GameState.History(when,title,narrative,"good",changes));
+        s.history.add(0,new GameState.History(when,title,narrative,decisionTone,changes));
     }
     private List<GameState.SeriesResult> autoSeason(GameState s){
         var batch=new ArrayList<GameState.SeriesResult>();int guard=0;
@@ -146,6 +151,7 @@ public final class GameEngine {
         var choice=scene(s).choices().stream().filter(c->c.id().equals(action.target())).findFirst().orElseThrow(()->new IllegalArgumentException("Escolha inválida para esta ocasião."));require(choice.available(),"Saldo insuficiente.");
         boolean success=choice.chance()==100||random.nextInt(100)<choice.chance();String narrative,heading=choice.title(),tone=success?"good":"bad";boolean advance=true;GameState.MapStats mapStats=null;
         String id=choice.id();
+        if(s.match!=null&&s.match.mapDecision&&(id.startsWith("match-")||id.equals("map-sim"))){resolveSeriesMap(s,id,success,when,before);return;}
         if(id.equals("season-retire")){s.ended=true;s.ending="Seu legado no competitivo";record(s,"Carreira encerrada","Você escolheu encerrar sua trajetória aos "+s.age+" anos. Resultados, estatísticas e conquistas continuam no histórico.","good",when,before,null);return;}
         if(id.startsWith("season-focus:")){String key=id.substring(13);skill(s,key,4);skill(s,key.equals("tactics")?"composure":"discipline",2);s.energy=90;s.stress=Math.max(0,s.stress-10);advance(s);skill(s,"discipline",2);s.reputation+=4;advance(s);normalize(s);record(s,"Desenvolvimento definido","Seu foco de evolução foi aplicado. Escolha o contrato; a primeira metade da temporada será simulada automaticamente.","good",when,before,null);return;}
         if(id.equals("run-prepare")){skill(s,"tactics",3);skill(s,"discipline",5);s.reputation+=4;s.energy+=10;advance(s);advance(s);normalize(s);record(s,"Pronto para o mercado","Treino e teste de consistência concluídos. Agora a escolha de contrato é sua.","good",when,before,null);return;}
@@ -202,12 +208,32 @@ public final class GameEngine {
     private void settle(GameState s,int months){if(s.contract!=null)earn(s,s.contract.salary()*months);s.money-=Math.min(s.money,(s.age<18?50:300)*months);s.energy+=(8+s.investments.getOrDefault("fitness",0))*months;s.stress+=months==0||s.contract==null?0:s.contract.pressure()/12;}
     private void startYear(GameState s){s.campaigns.clear();s.currentSeries=null;s.tourEvent=false;s.legacyMap=false;s.seasonSeriesWins=0;s.seasonSeriesLosses=0;s.runEventCount=0;s.seenLifeEvents.clear();s.seasonGoal=null;s.goalStart=0;s.goalSettled=false;s.age++;s.year++;s.phase=0;s.seasonWins=0;s.seasonLosses=0;s.match=null;s.qualifiedMasters1=false;s.qualifiedMasters2=false;s.qualifiedPlayoffs=false;s.qualifiedChampions=false;s.qualifiedAscension=false;s.eventVariant=random.nextInt(100000);s.expiredContract=null;Catalog.refreshContractTier(s);if(s.contract!=null&&s.contract.endYear()<s.year){s.expiredContract=s.contract;s.contract=null;}}
     private GameState.Match matchFor(GameState s){if(s.match!=null)return s.match;var m=new GameState.Match();var candidates=Catalog.ORGS.stream().filter(o->o.tier()==Calendar.tier(s)&&o.region().equals(Calendar.region(s))&&!o.name().equals(Catalog.team(s))).toList();if(candidates.isEmpty())candidates=Catalog.ORGS.stream().filter(o->o.tier()==Calendar.tier(s)&&!o.name().equals(Catalog.team(s))).toList();m.opponent=candidates.isEmpty()?"Mix regional":candidates.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase),candidates.size())).name();m.map=Catalog.MAPS.get(Math.floorMod(Objects.hash(s.careerSeed,s.year,s.phase,"map"),Catalog.MAPS.size()));m.competition=Calendar.reserve(s)?"Scrim — "+Calendar.competition(s):Calendar.competition(s)+" — mapa decisivo";m.finalEligible=Calendar.trophy(s);return m;}
-    private GameState.Match seriesMap(GameState s,GameState.Series f){var m=new GameState.Match();m.seriesId=f.id;m.mapNumber=f.wins+f.losses+1;m.opponent=f.opponent;m.competition=f.competition;m.score=9;m.opponentScore=9;var pool=new ArrayList<>(Catalog.MAPS);Collections.shuffle(pool,new Random(Objects.hash(s.careerSeed,f.id,"veto")));m.map=pool.get((m.mapNumber-1)%pool.size());return m;}
-    private int simulationChance(GameState s,GameState.Series f){int baseline=Calendar.tier(s)==3?70:Calendar.tier(s)==2?52:38;int rival=Math.floorMod(Objects.hash(s.careerSeed,f.id,"rival"),13)-6;return clamp(52+(Catalog.overall(s)-baseline)/2-rival+(s.energy-50)/15+(s.form-50)/15+(s.chemistry-50)/15-s.stress/20+s.cardChanceBonus+(s.developmentMode.equals("prodigy")?8:0)+(s.igl?2:0),25,92);}
-    private void simulateMap(GameState s,GameState.Series f,int momentum){var m=seriesMap(s,f);boolean won=random.nextInt(100)<clamp(simulationChance(s,f)+momentum,20,95);int loser=6+random.nextInt(7);m.score=won?13:loser;m.opponentScore=won?loser:13;m.roundsWon=won?2:1;var stats=mapStatistics(s,m,won);s.maps.add(0,stats);if(won)f.wins++;else f.losses++;if(f.official){if(won){s.wins++;s.seasonWins++;earn(s,35*Calendar.tier(s));}else{s.losses++;s.seasonLosses++;}}s.energy-=2;}
+    private GameState.Match seriesMap(GameState s,GameState.Series f){var m=new GameState.Match();m.seriesId=f.id;m.mapNumber=f.wins+f.losses+1;m.opponent=f.opponent;m.competition=f.competition;m.mapDecision=true;m.agent=mapAgent(s,f,m.mapNumber);if(f.teamOvr==null)f.teamOvr=TeamRatings.profile(s,Catalog.team(s),true).overall();if(f.opponentOvr==null)f.opponentOvr=TeamRatings.profile(s,f.opponent,false).overall();m.score=9;m.opponentScore=9;var pool=new ArrayList<>(Catalog.MAPS);Collections.shuffle(pool,new Random(Objects.hash(s.careerSeed,f.id,"veto")));m.map=pool.get((m.mapNumber-1)%pool.size());return m;}
+    private int simulationChance(GameState s,GameState.Series f){return TeamRatings.chance(s,f);}
+    private void simulateMap(GameState s,GameState.Series f,int momentum){var m=seriesMap(s,f);boolean won=random.nextInt(100)<clamp(simulationChance(s,f)+momentum,12,85);int loser=clamp(11-Math.abs(f.teamOvr-f.opponentOvr)/7+random.nextInt(5)-2,3,12);m.score=won?13:loser;m.opponentScore=won?loser:13;m.roundsWon=won?2:1;var stats=mapStatistics(s,m,won);s.maps.add(0,stats);if(won)f.wins++;else f.losses++;if(f.official){if(won){s.wins++;s.seasonWins++;earn(s,35*Calendar.tier(s));}else{s.losses++;s.seasonLosses++;}}s.energy-=2;}
+    private String mapAgent(GameState s,GameState.Series f,int number){
+        var favorites=s.favoriteAgents==null||s.favoriteAgents.isEmpty()?List.of(s.agent):s.favoriteAgents;
+        var rng=new Random(Objects.hash(s.careerSeed,f.id,number,"agent"));
+        return rng.nextInt(100)<60?s.agent:favorites.get(rng.nextInt(favorites.size()));
+    }
+    private void resolveSeriesMap(GameState s,String id,boolean won,String when,Map<String,String> before){
+        var f=s.currentSeries;var m=s.match;boolean simulated=id.equals("map-sim");
+        if(!simulated){var play=Events.play(id);s.energy-=Math.max(0,play.energy()-s.investments.getOrDefault("nutrition",0));if(won){skill(s,play.attribute(),1);s.reputation+=f.official?play.reputation():1;}if(play.attribute().equals("communication"))s.chemistry+=3;}
+        else s.energy-=2;
+        int loser=clamp(11-Math.abs(f.teamOvr-f.opponentOvr)/7+random.nextInt(5)-2,3,12);
+        m.score=won?13:loser;m.opponentScore=won?loser:13;m.roundsWon=won?2:1;
+        var stats=mapStatistics(s,m,won);if(simulated)stats=new GameState.MapStats(stats.year(),stats.phase(),stats.competition(),stats.map(),stats.opponent(),stats.team(),stats.won(),stats.score(),stats.opponentScore(),stats.kills(),stats.deaths(),stats.assists(),stats.combatScore(),stats.rounds(),stats.acs(),stats.kd(),stats.official(),stats.seriesId(),stats.mapNumber(),"simulated",stats.agent(),stats.teamOvr(),stats.opponentOvr());
+        s.maps.add(0,stats);if(won)f.wins++;else f.losses++;
+        if(f.official){if(won){s.wins++;s.seasonWins++;earn(s,35*Calendar.tier(s));}else{s.losses++;s.seasonLosses++;}}
+        s.form+=won?3:-3;s.stress+=won?-3:4;
+        String narrative="Mapa "+m.mapNumber+" · "+m.map+" · "+m.agent+": "+m.score+"–"+m.opponentScore+". "+(won?(simulated?"O quinteto venceu o mapa. ":"Sua decisão garantiu o mapa. "):"O adversário levou o mapa. ")+"Série: "+f.wins+"–"+f.losses+" (MD"+f.bestOf+"). ";
+        boolean done=f.wins==f.bestOf/2+1||f.losses==f.bestOf/2+1;
+        if(done){var result=finishSeries(s,"moment");normalize(s);record(s,(result.won()?"SÉRIE VENCIDA ":"SÉRIE PERDIDA ")+result.wins()+"–"+result.losses(),narrative+seriesSummary(s,List.of(result)),result.won()?"good":"bad",when,before,stats,List.of(result));}
+        else{s.match=seriesMap(s,f);normalize(s);record(s,(won?"MAPA VENCIDO ":"MAPA PERDIDO ")+m.score+"–"+m.opponentScore,narrative+"Próximo: "+s.match.map+" · "+s.match.agent+". Uma nova decisão, em outro mapa.",won?"good":"bad",when,before,stats);}
+    }
     private void seriesAction(GameState s,String id,String when,Map<String,String> before){
         require(Calendar.match(s)&&s.match==null&&!s.tourEvent,"Conclua a decisão em andamento.");var batch=new ArrayList<GameState.SeriesResult>();int phase=s.phase;
-        if(id.equals("series-play")){s.currentSeries=Tour.fixture(s);var f=s.currentSeries;while(f.wins<f.bestOf/2&&f.losses<f.bestOf/2)simulateMap(s,f,0);s.match=seriesMap(s,f);normalize(s);record(s,"O momento é seu",f.competition+" · "+f.round+". Série em "+f.wins+"–"+f.losses+"; "+s.match.map+" pode decidir o confronto. Os mapas já simulados estão nas estatísticas.","good",when,before,null);return;}
+        if(id.equals("series-play")){s.currentSeries=Tour.fixture(s);var f=s.currentSeries;s.match=seriesMap(s,f);normalize(s);record(s,"Entre no servidor",f.competition+" · "+f.round+" · MD"+f.bestOf+". Uma decisão por mapa: precisa vencer "+(f.bestOf/2+1)+" mapas. Mapa 1: "+s.match.map+" · "+s.match.agent+".","neutral",when,before,null);return;}
         boolean run=id.equals("series-run"),next=id.equals("series-next");
         if(next&&!Tour.fixture(s).critical.isBlank()){record(s,"Chegou a hora de decidir",Tour.fixture(s).critical+". Assuma o momento ou escolha simular esta série.","good",when,before,null);return;}
         int limit=run?4:next?26:1;
@@ -219,6 +245,7 @@ public final class GameEngine {
     }
     private GameState.SeriesResult finishSeries(GameState s,String mode){
         var f=s.currentSeries;boolean won=f.wins>f.losses;var maps=s.maps.stream().filter(m->f.id.equals(m.seriesId())).sorted(Comparator.comparingInt(m->m.mapNumber())).toList();
+        if(mode.equals("moment")&&maps.stream().noneMatch(m->"moment".equals(m.mode())))mode="simulated";
         var result=new GameState.SeriesResult(f.id,s.year,s.phase,f.competition,f.round,f.opponent,Catalog.team(s),f.bestOf,f.wins,f.losses,won,f.official,mode,maps);s.series.add(0,result);
         if(f.official&&Calendar.tier(s)==3&&s.tierOneDebutYear==null)s.tierOneDebutYear=s.year;
         if(f.official){if(won){s.seriesWins++;s.seasonSeriesWins++;s.reputation+=3;earn(s,150*Calendar.tier(s));s.followers+=120;}else{s.seriesLosses++;s.seasonSeriesLosses++;s.reputation++;s.followers+=30;}}
@@ -240,7 +267,7 @@ public final class GameEngine {
             int damage=Math.min(750,k*95+rng.nextInt(100));int roundScore=damage;for(int n=0;n<k;n++)roundScore+=150-20*Math.min(4,rng.nextInt(3)+n);roundScore+=Math.max(0,k-1)*50+a*25;
             kills+=k;assists+=a;combat+=roundScore;
         }
-        return new GameState.MapStats(s.year,s.phase,Calendar.competition(s),m.map,m.opponent,Catalog.team(s),won,m.score,m.opponentScore,kills,deaths,assists,combat,rounds,round1((double)combat/rounds),kd(kills,deaths),!Calendar.reserve(s),m.seriesId,m.mapNumber,m.seriesId==null?"legacy":s.match==m?"moment":"simulated");
+        return new GameState.MapStats(s.year,s.phase,Calendar.competition(s),m.map,m.opponent,Catalog.team(s),won,m.score,m.opponentScore,kills,deaths,assists,combat,rounds,round1((double)combat/rounds),kd(kills,deaths),!Calendar.reserve(s),m.seriesId,m.mapNumber,m.seriesId==null?"legacy":s.match==m?"moment":"simulated",m.agent,s.currentSeries==null?null:s.currentSeries.teamOvr,s.currentSeries==null?null:s.currentSeries.opponentOvr);
     }
     public static Statistics statistics(List<GameState.MapStats> maps){int kills=maps.stream().mapToInt(GameState.MapStats::kills).sum(),deaths=maps.stream().mapToInt(GameState.MapStats::deaths).sum(),assists=maps.stream().mapToInt(GameState.MapStats::assists).sum(),rounds=maps.stream().mapToInt(GameState.MapStats::rounds).sum(),score=maps.stream().mapToInt(GameState.MapStats::combatScore).sum();return new Statistics(maps.size(),kills,deaths,assists,rounds,rounds==0?0:round1((double)score/rounds),kd(kills,deaths));}
     private List<GameState.Award> annualAwards(GameState s){var stats=statistics(s.maps.stream().filter(m->m.official()&&m.year()==s.year).toList());var list=new ArrayList<GameState.Award>();if(stats.maps()>=2&&CareerHonors.rookieEligible(s)&&stats.acs()>=200)list.add(new GameState.Award(s.year,"Revelação do ano","Até 19 anos ou primeira temporada no tier 1, ao menos 2 mapas oficiais e ACS ≥ 200."));if(stats.maps()>=3&&stats.acs()>=245&&ratio(stats.kills(),stats.deaths())>=1.15)list.add(new GameState.Award(s.year,"MVP da temporada","Ao menos 3 mapas, ACS ≥ 245 e K/D ≥ 1,15."));if(stats.maps()>=3&&s.igl&&s.seasonWins>=3&&s.attributes.get("communication")>=55)list.add(new GameState.Award(s.year,"IGL do ano","IGL, comunicação ≥ 55, ao menos 3 mapas e 3 vitórias."));if(stats.maps()>=3&&stats.kills()>=80&&ratio(stats.kills(),stats.deaths())>=1.2)list.add(new GameState.Award(s.year,"Destaque da função — "+Catalog.role(s.role).name(),"Ao menos 3 mapas, 80 abates e K/D ≥ 1,20."));return list;}

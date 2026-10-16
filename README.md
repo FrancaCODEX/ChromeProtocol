@@ -2,7 +2,7 @@
 
 **O próximo round é seu.** Modo carreira web de e-sports, começando por Valorant. Você cria um jogador de 15 anos e toma decisões dentro e fora do servidor até os 35 anos: nacionalidade, função, peneiras, contratos, partidas e legado.
 
-Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.7.0**.
+Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.8.0**.
 
 ## O que dá para jogar
 
@@ -11,7 +11,7 @@ Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O 
 - Personagem com rosto, pele, cabelo, roupa e acessórios de jogador; prévia em tempo real.
 - Três trajetórias iniciais: revelação da ranked, equipe da escola e criador de conteúdo.
 - Treze fases por ano: preparação, peneiras, mercado, Kickoff, Masters, Stage 1, eventos, Stage 2, playoffs, Champions, prêmios e balanço.
-- Séries MD3/MD5 completas, simulação de rodadas comuns e intervenção em três rounds-chave no mapa que pode decidir a série.
+- Séries MD3/MD5 completas, simulação de rodadas comuns e uma decisão por mapa desde a abertura da série.
 - Ritmos detalhado e Run, com a mesma progressão: blocos de até quatro séries, dilemas entre os jogos e escolhas de contrato/cartas sempre manuais.
 - Resultado imediato persistente após cada decisão, com narrativa, placar e valores antes/depois. O próximo evento só é liberado ao continuar.
 - Mercado com propostas distintas de salário, duração e vaga de titular/reserva.
@@ -70,11 +70,11 @@ O volume `chromeprotocol-data` mantém o banco. `docker compose down` preserva o
 | Prêmios individuais | Novembro | Reconhecimentos calculados pelos números |
 | Balanço e carta permanente | Dezembro | Escolher evolução e depois 1 de 3 cartas |
 
-Cada escolha abre o resultado imediatamente. Recarregar mantém o resultado e não refaz o sorteio. Vencer pelo menos dois dos três rounds-chave vence o mapa. Reservas disputam scrims com números separados, sem vitórias oficiais, classificação ou troféus. Equipes independentes de base que vencem pelo menos 6 das 10 séries do Stage 2 disputam o Ascension regional. O título garante acesso ao VCT da mesma região na temporada seguinte, com atualização do contrato e salário. Academy segue a rota de convite ao elenco principal, sem duplicar a franquia. Sem vaga, você recebe um evento contextual em vez de disputar o campeonato.
+Cada escolha abre o resultado imediatamente. Recarregar mantém o resultado e não refaz o sorteio. Nas novas séries interativas, cada decisão resolve um mapa: duas vitórias fecham a MD3 e três fecham a MD5. Reservas disputam scrims com números separados, sem vitórias oficiais, classificação ou troféus. Equipes independentes de base que vencem pelo menos 6 das 10 séries do Stage 2 disputam o Ascension regional. O título garante acesso ao VCT da mesma região na temporada seguinte, com atualização do contrato e salário. Academy segue a rota de convite ao elenco principal, sem duplicar a franquia. Sem vaga, você recebe um evento contextual em vez de disputar o campeonato.
 
 A elite tem Kickoff com três vitórias ou três derrotas, grupos regionais de seis equipes com cinco séries, classificação dos quatro primeiros, trajetória em chave superior/inferior e finais MD5. Masters inclui suíço (duas vitórias/derrotas) com entrada direta do campeão regional; Champions inclui grupos e playoffs. Tabelas do grupo do jogador são determinísticas e só mostram resultados das rodadas já concluídas. Chaves adversárias, desempates e vagas são simplificados: não há pontuação de circuito, cross-region seeding ou todos os critérios oficiais. O calendário da base/Premier é próprio do jogo: 26 séries (8 + 8 + 10), além do Ascension dos classificados, com campanha campeã ao ganhar pelo menos 75% da etapa e a última série. Esse número não é um formato oficial do VCB. A elite não tem total anual fixo: a campanha invicta no modelo soma 33 séries; suíço e chaves inferiores acrescentam confrontos, e eliminações reduzem o total. A estimativa de 34–42 não é tratada como regra universal. O calendário regional usa Americas, EMEA, Pacific e CN. VCB identifica Gamers Club Challengers Brazil; outras ligas são simplificadas por região.
 
-Os salários são creditados pelos meses concluídos, junto das despesas: R$ 50/mês antes dos 18 anos e R$ 300/mês depois, limitadas ao saldo. O calendário avança entre fases; os três rounds de um mapa pertencem à mesma fase. Escolhas sem teste são garantidas. As demais mostram a chance exata usada no servidor, calculada pelos atributos, condição do jogador, química e progresso do mapa.
+Os salários são creditados pelos meses concluídos, junto das despesas: R$ 50/mês antes dos 18 anos e R$ 300/mês depois, limitadas ao saldo. O calendário avança entre fases; todos os mapas de uma série pertencem à mesma fase. Escolhas sem teste são garantidas. As demais mostram a chance exata usada no servidor, calculada pelos atributos, condição do jogador, química e progresso do mapa.
 
 As oportunidades de elite exigem reputação 40 e OVR 45; Challengers exige reputação 14. Não há bloqueio aos 18 anos para franquias ou Champions nesta simulação. O mercado seleciona propostas de Americas, EMEA, Pacific e China conforme o nível disponível, sem limitar a nacionalidade. As academias internacionais e equipes Contenders de desenvolvimento são adaptações fictícias para a progressão do jogo.
 
@@ -147,7 +147,7 @@ Os bônus já estão incluídos no atributo mostrado (limite 99). Não são soma
 
 A entrada mostra um menu com **Continuar carreira**, **Nova carreira**, guia e dossiê do jogador salvo. Resultados e cartas pendentes continuam abrindo direto para a decisão correspondente. A criação mantém a personalização e acrescenta radar/OVR inicial ao vivo; a prévia acompanha função, trajetória, IGL e modo de evolução.
 
-**Minha rotina** oferece quatro opções estáveis por período, entre nove atividades: VOD, fundamentos, transmissão, família, duo com colega, estudos, idioma, mentoria e recuperação. Apenas uma atividade pode ser feita em cada fase do ano; não avança o calendário. Não pode ser usada entre rounds-chave ou enquanto uma recompensa anual estiver pendente. Os efeitos e ganhos são exibidos antes da escolha, e o resultado/histórico ficam salvos. A quota é verificada no servidor e não reinicia ao atualizar a página.
+**Minha rotina** oferece quatro opções estáveis por período, entre nove atividades: VOD, fundamentos, transmissão, família, duo com colega, estudos, idioma, mentoria e recuperação. Apenas uma atividade pode ser feita em cada fase do ano; não avança o calendário. Não pode ser usada durante uma série interativa ou enquanto uma recompensa anual estiver pendente. Os efeitos e ganhos são exibidos antes da escolha, e o resultado/histórico ficam salvos. A quota é verificada no servidor e não reinicia ao atualizar a página.
 
 Escolha **um objetivo anual** até a janela de contratos: manter contrato ativo, vencer três mapas oficiais, completar três mapas com ACS médio 230, ganhar oito pontos de comunicação ou conquistar 1.500 novos seguidores. As metas relativas começam no momento da escolha. Avaliação e recompensa em dinheiro/atributos são automáticas no balanço anual, antes da carta; cada meta só paga uma vez. Uma meta não cumprida não reduz habilidades. A próxima temporada abre nova escolha. Ganhos respeitam o limite 99 e o modo Talento da geração.
 
@@ -161,7 +161,7 @@ Continua sendo uma simulação própria: séries e grupos do jogador são regist
 
 Antes de uma série, escolha **Assumir o momento decisivo**, **Simular esta série** ou **Avançar até uma decisão**. O avanço detalhado para antes de estreia, rodada final, classificação, eliminação ou título. Em **Run**, o terceiro botão simula até quatro séries, inclusive decisivas, e para no próximo dilema ou ao encerrar o período. Ele não escolhe contratos, cartas ou respostas de eventos. Trocar de ritmo mantém chances, atributos e todo o progresso. No início de cada ano a Run combina treino e teste em uma ação; as propostas continuam sendo escolhidas pelo jogador.
 
-A intervenção simula a abertura da série, pausa quando alguém chega a um mapa da vitória e oferece três rounds-chave. O resultado do mapa influencia em cinco pontos a chance dos mapas restantes. Todos os mapas, inclusive simulados, ficam salvos com identificação da série, modo, kills, mortes, assistências, KD e ACS. Resultados em bloco podem ser expandidos mapa a mapa. Séries e mapas têm contadores separados. Nenhum mapa de um save antigo vira uma série inventada; um mapa antigo em andamento é concluído uma vez no formato original. Os contadores de séries começam com as séries realmente disputadas após a atualização.
+Desde a versão 1.8, a intervenção começa no mapa 1 e cada escolha resolve um mapa inteiro. O primeiro lado a duas vitórias em MD3 ou três em MD5 encerra a série. Saves com o antigo mapa de três rounds já em andamento o concluem pelo formato original. Todos os mapas, inclusive simulados, ficam salvos com identificação da série, modo, kills, mortes, assistências, KD e ACS. Resultados em bloco podem ser expandidos mapa a mapa. Séries e mapas têm contadores separados. Nenhum mapa de um save antigo vira uma série inventada; um mapa antigo em andamento é concluído uma vez no formato original. Os contadores de séries começam com as séries realmente disputadas após a atualização.
 
 A prática a cada quatro séries dá +1 no atributo principal e +1 em disciplina, mesmo perdendo. Até os 23 anos, concluir uma etapa melhora cada atributo em +1. Ganhos respeitam o limite 99 e o bônus de evolução de Talento da geração. Vitórias em mapas pagam 35 × nível; vitórias em séries, 150 × nível, além do salário e premiações de campeonato. Não existe título por vencer apenas um mapa. A simulação usa atributos, condição, adversário, liderança e bônus permanentes: sorte pode mudar uma campanha, mas derrotas não removem a evolução.
 
@@ -204,3 +204,20 @@ O resumo de cada temporada, inclusive no modo automático, mostra as grandes fin
 O legado em cada organização fica em Histórico e no cartão do jogador. Pontos: 40 por temporada registrada, 2 por série oficial vencida, 120 por título do clube e 30 por grande final disputada. Níveis: Promessa (0), Nome da torcida (100), Referência (300), Ídolo (650), Lenda (1.200). Os pontos são derivados dos registros disponíveis, sem sorteio ou bônus repetido por recarregamento; mudar de clube preserva a história anterior. Organizações Academy e principal mantêm legados separados.
 
 O ícone Ascension transparente enviado em `vct (2).zip` foi incluído na coleção, galeria e ampliação. A foto do troféu permanece como referência de origem e não foi recortada. Avatares com geração de IA ou presets ficam para uma atualização futura; nenhum serviço externo de imagens foi adicionado.
+
+
+## Séries, histórico e equilíbrio (1.8)
+
+As novas séries interativas usam uma decisão por mapa. Não há mapas de abertura ocultos; sucesso vence o mapa e falha o perde, com um novo mapa/veto ao continuar. MD3 fecha em 2–0 ou 2–1; MD5 em 3–0, 3–1 ou 3–2. “Simular este mapa” também conta um único mapa. Recarga e resultado pendente preservam a decisão seguinte, sem jogar duas vezes. Séries antigas com mapa de três rounds em andamento mantêm o comportamento anterior até o fechamento, preservando os registros.
+
+Cada novo mapa registra o agente escolhido deterministicamente entre principal e favoritos, com prioridade ao principal. O agente não muda ao recarregar. Mapas antigos sem essa informação mostram “Agente não registrado”. Estatísticas usam verde para vitória e vermelho para derrota, com placar, agente, ACS, KD e K/D/A. O modal e o resultado persistente usam cor semântica, texto maior e indicação textual de sucesso/falha. A paleta principal passa a preto, coral e dourado; os indicadores ficam à direita no desktop e antes das escolhas nas telas menores.
+
+### Força das equipes
+
+Referência primária: [Global Power Rankings da Riot](https://valorantesports.com/gpr), consultado em **16/10/2026** (a página mostrava atualização em 09/10/2026). Os 48 valores estão fixados em `TeamRatings.GPR`. OVR é uma transformação fictícia do jogo, não uma nota oficial de jogadores: `60 + arredondar((GPR - 1062) × 32 / 436)`, resultando em 60–92 no ponto de partida. Desenvolvimento/base usa valores próprios; um clube que sobe de divisão recebe um piso competitivo simulado.
+
+Cada clube tem cinco valores anônimos de elenco. As diferenças iniciais de até cinco pontos e as mudanças anuais de até cinco pontos por vaga são estáveis para a carreira, simulando evolução e trocas; não são elencos reais. A forma recente considera até dez séries oficiais registradas no último ano, tanto como equipe do jogador quanto como adversário, com ajuste limitado a quatro pontos. Quando titular, o OVR do jogador substitui uma das cinco vagas, com peso de 20%; um reserva não substitui um titular. OVR dos times pode cair, mas atributos/OVR do jogador permanecem sem redução.
+
+A chance base por mapa parte de 50%, soma duas vezes a diferença dos quintetos e ajustes de condição, química, IGL e bônus limitados, com faixa de 12–85%. Nas decisões, o atributo relevante e a dificuldade da jogada ajustam a chance exibida, limitada a 10–88%. A mesma força dos times informa partidas automáticas, mapas individuais e resultados adversários dos grupos. Os OVRs dos dois quintetos ficam fixos durante a série e são registrados com cada mapa, sem mudar o passado com resultados futuros. O placar de rounds considera diferença de força e variação, permitindo jogos próximos e vitórias largas. Não há perda forçada para equilibrar a carreira e não há vitória garantida por chegar a 99 de OVR.
+
+Em Contrato → Força das equipes é possível comparar os clubes na temporada corrente. A aplicação não consulta o ranking em tempo real nem afirma reproduzir elencos futuros.
