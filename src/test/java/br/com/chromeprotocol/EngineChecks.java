@@ -14,6 +14,25 @@ public final class EngineChecks {
  static String quick(GameEngine e,GameState s){var choices=e.view(s).scene().choices();return choices.stream().filter(c->c.id().equals("series-run")||c.id().equals("series-sim")).findFirst().orElse(choices.get(0)).id();}
  static void map(GameEngine e,GameState s){int phase=s.phase,steps=0;while(s.phase==phase){step(e,s,quick(e,s));check(++steps<30,"Competition terminates");}}
  public static void run(){assertions=0;
+  for(int seed=0;seed<20;seed++){
+   var rotation=fresh();rotation.reputation=80;rotation.attributes.replaceAll((k,v)->85);rotation.careerSeed=seed;var seen=new HashSet<String>();
+   for(int year=2026;year<2030;year++){rotation.year=year;var offers=Catalog.offers(rotation);check(offers.equals(Catalog.offers(rotation)),"Rotation stable between reads");offers.stream().filter(o->Catalog.ORGS.stream().anyMatch(org->org.id().equals(o.orgId())&&org.region().equals("AMERICAS"))).forEach(o->seen.add(o.orgId()));}
+   check(seen.containsAll(List.of("sentinels","100-thieves","loud","cloud9","furia","g2-esports")),"Americas market rotates across requested clubs");
+   check(seen.size()==12,"Every Americas tier one club appears within a four year rotation");
+  }
+  var honors=fresh();honors.age=20;honors.year=2031;honors.phase=11;honors.contract=new GameState.Contract("loud","LOUD",3,20000,2032,"Titular",36);honors.tierOneDebutYear=2031;
+  for(int i=0;i<3;i++)honors.maps.add(new GameState.MapStats(2031,3,"VCT Americas","Haven","NRG","LOUD",true,13,8,30,8,6,5000,21,238,"3.75",true));
+  choose(win,honors,"awards-team");check(honors.awards.stream().anyMatch(a2->a2.title().equals("Revelação do ano")),"First tier one season can earn rookie after age nineteen");
+  honors.year++;check(!CareerHonors.rookieEligible(honors),"Veteran is no longer rookie in second tier one season");honors.age=19;check(CareerHonors.rookieEligible(honors),"Age nineteen is eligible");
+  var legacy=fresh();legacy.contract=new GameState.Contract("loud","LOUD",3,20000,2027,"Titular",36);
+  legacy.series.add(new GameState.SeriesResult("final",2026,10,"VALORANT Champions","Grande final","Sentinels","LOUD",5,2,3,false,true,"automatic",List.of()));
+  legacy.series.add(new GameState.SeriesResult("upper",2026,10,"VALORANT Champions","Final superior","NRG","LOUD",3,1,2,false,true,"automatic",List.of()));
+  legacy.series.add(new GameState.SeriesResult("scrim",2026,10,"Scrim","Grande final","NRG","LOUD",3,0,2,false,false,"automatic",List.of()));
+  check(CareerHonors.finals(legacy).size()==1&&CareerHonors.finals(legacy).get(0).opponent().equals("Sentinels"),"Final summary excludes lower upper finals and scrims");
+  var oldLegacy=CareerHonors.legacy(legacy);check(oldLegacy.get(0).points()==70&&oldLegacy.get(0).finals()==1,"Legacy counts official participation and final exactly once");
+  for(int i=0;i<5;i++)legacy.trophies.add(new GameState.Trophy(2026+i,"VCT Americas","LOUD"));
+  check(CareerHonors.legacy(legacy).get(0).status().equals("Ídolo"),"Titles build idol status");legacy.contract=new GameState.Contract("sentinels","Sentinels",3,30000,2028,"Titular",36);
+  check(CareerHonors.legacy(legacy).stream().anyMatch(l->l.name().equals("LOUD")&&l.status().equals("Ídolo")),"Club legacy survives transfer");check(CareerHonors.legacy(legacy).equals(CareerHonors.legacy(legacy)),"Repeated reads never increment legacy");
   for(var c:Catalog.COUNTRIES)for(var r:Catalog.ROLES)for(var a:Catalog.AGENTS){var s=win.create("A",c.id(),r.id(),"school",a.name(),null,"standard",true,List.of(a.name(),"Jett"));check(s.igl&&s.favoriteAgents.contains(a.name())&&s.age==15,"Every agent independent of role and nationality");}
   check(Catalog.AGENTS.size()==29,"All 29 reference agents");check(Catalog.ORGS.stream().filter(o->o.tier()==3).count()==48,"48 official VCT teams");
   rejects(()->win.create("","BR","duelist","ranked","Jett",null),"Empty name");rejects(()->win.create("A","BR","duelist","ranked","Fake",null),"Unknown agent");rejects(()->win.create("A","BR","duelist","ranked","Jett",null,"cheat",false,List.of()),"Unknown mode");

@@ -2,7 +2,7 @@
 
 **O próximo round é seu.** Modo carreira web de e-sports, começando por Valorant. Você cria um jogador de 15 anos e toma decisões dentro e fora do servidor até os 35 anos: nacionalidade, função, peneiras, contratos, partidas e legado.
 
-Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.6.0**.
+Este projeto substitui o antigo RPG cyberpunk do repositório ChromeProtocol. O nome do repositório e os caminhos internos Java foram mantidos para facilitar a atualização local. O jogo ativo agora é **Clutch Career 1.7.0**.
 
 ## O que dá para jogar
 
@@ -80,7 +80,7 @@ As oportunidades de elite exigem reputação 40 e OVR 45; Challengers exige repu
 
 Ao expirar o contrato, a renovação aparece uma única vez, com aumento mínimo de 10% e valorização por OVR, reputação, títulos e divisão. O clube atual não reaparece como contratação externa. A partir de 80 OVR, o jogador é titular e só recebe propostas de titular. Nas academias, OVR 55 e reputação 25 liberam convite ao elenco principal, inclusive durante contrato, sem multa e com aumento mínimo de 20%.
 
-O editor permite criar personagem masculino ou feminino e alterar o visual durante a carreira. O novo retrato Arena é vetorial e local, com rosto, cabelos, cores, roupas e acessórios independentes. Retratos Estúdio antigos migram para Arena; o estilo Clássico continua disponível. A interface usa um novo tema editorial claro, painéis de perfil escuros, controles arredondados e layouts para computador e celular.
+O editor permite criar personagem masculino ou feminino e alterar o visual durante a carreira. O novo retrato Arena é vetorial e local, com rosto, cabelos, cores, roupas e acessórios independentes. Retratos Estúdio antigos migram para Arena; o estilo Clássico continua disponível. A interface usa tema escuro com coral, verde e dourado, controles arredondados e layouts para computador e celular.
 
 ## Salvamento e campanhas antigas
 
@@ -193,3 +193,14 @@ As nove imagens enviadas pelo proprietário em `vct.zip` estão em `static/troph
 Quando um contrato termina, a próxima janela de janeiro oferece **Renovar com [clube]**, além das novas propostas e da opção de agente livre. A renovação é garantida por mais uma temporada e seu salário nunca fica abaixo do vínculo anterior. Preserva o clube e melhora a química, sem multa. Aceitar outra proposta ou seguir como agente livre descarta a renovação; rescindir não gera esse direito. O vínculo expirado é guardado a partir desta versão; saves antigos que já perderam esses dados não recebem termos inventados.
 
 A partir de **80 de OVR**, toda proposta (inclusive renovação) é de **Titular**, em qualquer equipe. Um reserva que atinge esse patamar é promovido automaticamente, preservando salário e prazo. Saves anteriores são reconciliados ao carregar. Um mapa/série já iniciado é concluído com a posição anterior para preservar o registro de scrim; a promoção passa a valer em seguida. Os scrims anteriores continuam no histórico, mas a campanha oficial inicia sua própria tabela, sem herdar vitórias de avaliação. O feedback da decisão mostra a mudança de posição. O limiar é uma regra fictícia do jogo, centralizada em `Catalog.STARTER_OVR`.
+
+
+## Mercado, prêmios e legado (1.7)
+
+O mercado possui rotação determinística por carreira e região. A janela oferece até três destinos da região da nacionalidade e um de cada outra região, completando até seis propostas distintas quando houver opções. O catálogo de cada região é embaralhado uma vez por carreira e percorrido por blocos a cada ano; os 12 clubes do Americas tier 1 entram no ciclo de quatro temporadas, antes das exclusões de renovação ou convite interno. As propostas continuam estáveis durante a mesma janela e renovação não duplica o clube atual.
+
+O resumo de cada temporada, inclusive no modo automático, mostra as grandes finais perdidas com competição, adversário e placar da série. Finais superiores/inferiores e scrims não são marcados como vice-campeonatos. As imagens dos prêmios anuais usam desenhos SVG próprios: MVP dourado, Revelação prateado e quatro símbolos de função em verde. IGL tem coroa própria. Revelação exige até 19 anos **ou** a primeira temporada de participação oficial no tier 1, além dos critérios de mapas e ACS já usados. Saves antigos recuperam a estreia somente a partir das séries registradas.
+
+O legado em cada organização fica em Histórico e no cartão do jogador. Pontos: 40 por temporada registrada, 2 por série oficial vencida, 120 por título do clube e 30 por grande final disputada. Níveis: Promessa (0), Nome da torcida (100), Referência (300), Ídolo (650), Lenda (1.200). Os pontos são derivados dos registros disponíveis, sem sorteio ou bônus repetido por recarregamento; mudar de clube preserva a história anterior. Organizações Academy e principal mantêm legados separados.
+
+O ícone Ascension transparente enviado em `vct (2).zip` foi incluído na coleção, galeria e ampliação. A foto do troféu permanece como referência de origem e não foi recortada. Avatares com geração de IA ou presets ficam para uma atualização futura; nenhum serviço externo de imagens foi adicionado.

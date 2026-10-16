@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.0 — 2026-10-16
+
+- Tema escuro com as cores coral, verde e dourado, mantendo o layout responsivo.
+- Rotação regional das propostas para incluir todo o catálogo, com até três destinos da região de origem e estabilidade na mesma janela.
+- Resumo anual com finais perdidas, adversários e placares das séries; troféus individuais anuais também no modo rápido.
+- Ícone Ascension enviado pelo usuário e sete novos troféus SVG próprios para MVP, Revelação, funções e IGL.
+- Revelação até 19 anos ou na estreia oficial em tier 1, com recuperação da estreia por séries antigas registradas.
+- Legado por organização com cinco níveis até Lenda, calculado por temporadas, vitórias, títulos e finais; preservado nas transferências.
+- Regressões de mercado, elegibilidade, legados, finais e renderização em computador/celular.
+
 ## 1.6.0 — 2026-10-15
 
 - Interface redesenhada, com navegação arredondada, mercado com identidade e salário em destaque e layouts responsivos.
