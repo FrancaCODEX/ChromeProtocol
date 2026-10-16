@@ -195,9 +195,15 @@ public final class Catalog {
         String home=country(s.nationality).region();var regions=new ArrayList<>(List.of("AMERICAS","EMEA","PACIFIC","CN"));regions.remove(home);regions.add(0,home);
         // At least one distinct destination in every available region. Annual seed changes the clubs, never their identity.
         var pool=new ArrayList<>(ORGS.stream().filter(o->organizationTier(s,o)==eligible&&!excluded.contains(o.id())).toList());
-        pool.sort(Comparator.comparingInt((Organization o)->Math.floorMod(Objects.hash(s.careerSeed,s.year,o.id()),100000)).thenComparing(Organization::id));
         var chosen=new ArrayList<Organization>();
-        for(String region:regions)pool.stream().filter(o->o.region().equals(region)).findFirst().ifPresent(chosen::add);
+        for(String region:regions){
+            var regional=new ArrayList<>(ORGS.stream().filter(o->organizationTier(s,o)==eligible&&o.region().equals(region)).sorted(Comparator.comparing(Organization::id)).toList());
+            Collections.shuffle(regional,new Random(Objects.hash(s.careerSeed,region,"rotation")));
+            int slots=region.equals(home)?3:1;
+            if(!regional.isEmpty())Collections.rotate(regional,-Math.floorMod((s.year-2026)*slots,regional.size()));
+            regional.stream().filter(o->!excluded.contains(o.id())).limit(slots).forEach(chosen::add);
+        }
+        Collections.shuffle(pool,new Random(Objects.hash(s.careerSeed,s.year,"fill")));
         for(var org:pool)if(chosen.size()<6&&!chosen.contains(org))chosen.add(org);
         for(int i=0;i<chosen.size();i++){
             var org=chosen.get(i);int tier=organizationTier(s,org);boolean reserve=i==chosen.size()-1&&overall(s)<STARTER_OVR;

@@ -203,4 +203,26 @@ class GameApiTest {
         var result=action(cookie,"choice","honor",0).path("character");assertEquals(2027,result.path("vctPromotions").path("red-canids").asInt());assertTrue(result.path("contract").path("salary").asInt()>3000);
     }
 
+    @Test void clubLegacyAndFinalsSurviveReloadWithoutGrantingDuplicatePoints() throws Exception {
+        Cookie cookie=create();var row=repository.findById(UUID.fromString(cookie.getValue())).orElseThrow();
+        var state=mapper.readValue(row.state,GameState.class);state.year=2027;state.age=20;
+        state.contract=new GameState.Contract("loud","LOUD",3,20000,2028,"Titular",36);
+        state.series.add(new GameState.SeriesResult("final",2026,10,"VALORANT Champions","Grande final","NRG","LOUD",5,2,3,false,true,"automatic",java.util.List.of()));
+        state.trophies.add(new GameState.Trophy(2026,"VCT Americas","LOUD"));
+        row.state=mapper.writeValueAsString(state);repository.saveAndFlush(row);
+        String previous=null;
+        for(int i=0;i<2;i++){
+            var response=mvc.perform(get("/api/game").cookie(cookie)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.game.seasonFinals[0].opponent").value("NRG"))
+                .andExpect(jsonPath("$.game.seasonFinals[0].wins").value(2))
+                .andExpect(jsonPath("$.game.seasonFinals[0].losses").value(3))
+                .andExpect(jsonPath("$.game.clubLegacy[0].points").value(190))
+                .andExpect(jsonPath("$.game.character.tierOneDebutYear").value(2026)).andReturn().getResponse().getContentAsString();
+            if(previous!=null)assertEquals(previous,response);previous=response;
+        }
+        for(String id:java.util.List.of("mvp","rookie","duelist","initiator","controller","sentinel","igl"))
+            mvc.perform(get("/awards/"+id+".svg")).andExpect(status().isOk());
+        mvc.perform(get("/trophies/ascension.png")).andExpect(status().isOk());
+    }
+
 }

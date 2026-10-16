@@ -1,7 +1,7 @@
 {
   "name": "clutch-career-browser-checks",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.7.0",
   "scripts": {
     "test:browser": "node scripts/test-browser.mjs",
     "build:avatar": "esbuild scripts/avatar-studio.js --bundle --format=esm --minify --outfile=src/main/resources/static/vendor/avatar-studio.js"

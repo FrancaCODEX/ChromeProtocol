@@ -97,6 +97,7 @@ public class CareerService {
             }
             if(game.favoriteAgents == null || game.favoriteAgents.isEmpty()) game.favoriteAgents = new java.util.ArrayList<>(java.util.List.of(game.agent));
             if(game.developmentMode == null) game.developmentMode = "standard";
+            CareerHonors.restoreDebut(game);
             Catalog.refreshContractTier(game);
             Catalog.ensureStarter(game);
             return game;
